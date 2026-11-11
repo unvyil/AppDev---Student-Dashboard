@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'registration_page.dart';
 import 'services/storage_service.dart';
-import 'widgets/kpi_card.dart';
-import 'widgets/program_stat_card.dart';
+import 'widgets/ccs_program_stats_grid_widget.dart';
 import 'widgets/student_card.dart';
+import 'widgets/student_kpi_row_widget.dart';
 
 class StudentsPage extends StatefulWidget {
   const StudentsPage({super.key});
@@ -176,36 +176,6 @@ class _StudentsPageState extends State<StudentsPage> {
     );
   }
 
-  Widget _buildKpiRow() {
-    return const Row(
-      children: [
-        Expanded(
-          child: KpiCard(
-            title: 'Total Students',
-            value: '428',
-          ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: KpiCard(
-            title: 'Active Students',
-            value: '401',
-            badge: '+7%',
-            badgeColor: Color(0xFFE8F5E9),
-            badgeTextColor: Color(0xFF2E7D32),
-          ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: KpiCard(
-            title: 'Avg. Attendance',
-            value: '93%',
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSearchBar() {
     return Row(
       children: [
@@ -266,88 +236,6 @@ class _StudentsPageState extends State<StudentsPage> {
     );
   }
 
-  Widget _buildProgramStatsView() {
-    const programs = [
-      (
-        code: 'BSCS-DS',
-        name: 'Data Science',
-        count: 96,
-        icon: Icons.storage_rounded,
-        iconColor: Color(0xFFE65100),
-        iconBg: Color(0xFFFFF3E0),
-      ),
-      (
-        code: 'BSCS-SE',
-        name: 'Software Engineering',
-        count: 104,
-        icon: Icons.code_rounded,
-        iconColor: Color(0xFF1565C0),
-        iconBg: Color(0xFFE3F2FD),
-      ),
-      (
-        code: 'BSIT-NS',
-        name: 'Network & Security',
-        count: 128,
-        icon: Icons.shield_outlined,
-        iconColor: Color(0xFF00838F),
-        iconBg: Color(0xFFE0F7FA),
-      ),
-      (
-        code: 'BSIT-WM',
-        name: 'Web and Mobile Technology',
-        count: 142,
-        icon: Icons.language_rounded,
-        iconColor: Color(0xFF7B1FA2),
-        iconBg: Color(0xFFF3E5F5),
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'CCS Programmes',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1E1E1E),
-          ),
-        ),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: programs.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 140,
-          ),
-          itemBuilder: (context, index) {
-            final p = programs[index];
-            return ProgramStatCard(
-              code: p.code,
-              name: p.name,
-              count: p.count,
-              icon: p.icon,
-              iconColor: p.iconColor,
-              iconBackgroundColor: p.iconBg,
-              statusText: 'Actively Enrolled',
-              onTap: () {
-                setState(() {
-                  _selectedTabIndex = 0;
-                  _searchQuery = p.code;
-                  _searchController.text = p.code;
-                });
-              },
-            );
-          },
-        ),
-      ],
-    );
-  }
-
   Widget _buildStudentsView(List<Student> students) {
     final filtered = students.where((s) {
       if (_searchQuery.isEmpty) return true;
@@ -361,7 +249,12 @@ class _StudentsPageState extends State<StudentsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildKpiRow(),
+        const StudentKpiRowWidget(
+          totalStudents: 428,
+          activeStudents: 401,
+          activeTrend: '+4%',
+          avgAttendance: '93%',
+        ),
         const SizedBox(height: 16),
         const Text(
           'Student List',
@@ -385,8 +278,11 @@ class _StudentsPageState extends State<StudentsPage> {
             child: Center(
               child: Column(
                 children: [
-                  Icon(Icons.person_search_outlined,
-                      size: 40, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.person_search_outlined,
+                    size: 40,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'No student records found',
@@ -425,7 +321,15 @@ class _StudentsPageState extends State<StudentsPage> {
                 _buildSegmentedToggle(),
                 const SizedBox(height: 16),
                 if (_selectedTabIndex == 1)
-                  _buildProgramStatsView()
+                  CcsProgramStatsGridWidget(
+                    onProgramSelected: (programCode) {
+                      setState(() {
+                        _selectedTabIndex = 0;
+                        _searchQuery = programCode;
+                        _searchController.text = programCode;
+                      });
+                    },
+                  )
                 else
                   FutureBuilder<List<Student>>(
                     future: _studentsFuture,

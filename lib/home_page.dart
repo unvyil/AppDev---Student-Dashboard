@@ -12,8 +12,10 @@ import 'services/app_preferences.dart';
 import 'services/storage_service.dart';
 import 'settings_page.dart';
 import 'students_page.dart';
-import 'widgets/profile_avatar.dart';
+import 'widgets/overview_card_widget.dart';
 import 'widgets/quick_action_button.dart';
+import 'widgets/swipeable_week_calendar_widget.dart';
+import 'widgets/weather_header_card_widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.preferences});
@@ -274,6 +276,8 @@ class _DashboardContentState extends State<DashboardContent> {
   late Future<String> _apiStatusFuture;
   late Future<String> _wifiStatusFuture;
   late Future<String> _gpsStatusFuture;
+  bool _isWifiConnected = true;
+  bool _isGpsActive = true;
   late DateTime _clockNow;
   Timer? _clockTimer;
   int _studentCount = 0;
@@ -354,12 +358,17 @@ class _DashboardContentState extends State<DashboardContent> {
   Future<String> _checkWifiStatus() async {
     try {
       final results = await Connectivity().checkConnectivity();
-      if (results.contains(ConnectivityResult.wifi)) return 'Connected';
-      if (results.isEmpty || results.contains(ConnectivityResult.none)) {
-        return 'Disconnected';
+      final isWifi = results.contains(ConnectivityResult.wifi) ||
+          results.contains(ConnectivityResult.ethernet) ||
+          results.contains(ConnectivityResult.mobile);
+      if (mounted) {
+        setState(() {
+          _isWifiConnected = isWifi || results.isNotEmpty;
+        });
       }
-      return 'Connected';
+      return _isWifiConnected ? 'Connected' : 'Disconnected';
     } catch (_) {
+      if (mounted) setState(() => _isWifiConnected = true);
       return 'Connected';
     }
   }
@@ -367,9 +376,29 @@ class _DashboardContentState extends State<DashboardContent> {
   Future<String> _checkGpsStatus() async {
     try {
       final enabled = await Geolocator.isLocationServiceEnabled();
+      if (mounted) setState(() => _isGpsActive = enabled);
       return enabled ? 'Active' : 'Disabled';
     } catch (_) {
+      if (mounted) setState(() => _isGpsActive = true);
       return 'Active';
+    }
+  }
+
+  Future<void> _refreshLocationAndWeather() async {
+    setState(() {
+      _gpsStatusFuture = _checkGpsStatus();
+      _weatherFuture = _fetchWeather();
+    });
+    final status = await _gpsStatusFuture;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'GPS & Weather Synced ($status): Manggahan, General Trias',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -484,15 +513,6 @@ class _DashboardContentState extends State<DashboardContent> {
     );
   }
 
-  Future<void> _showGpsStatus() async {
-    setState(() => _gpsStatusFuture = _checkGpsStatus());
-    await _showStatusDialog(
-      'GPS Status',
-      _gpsStatusFuture,
-      'Cavite Campus Location Service Status.',
-    );
-  }
-
   Future<void> _showNetworkStatus() async {
     setState(() => _wifiStatusFuture = _checkWifiStatus());
     await _showStatusDialog(
@@ -563,7 +583,10 @@ class _DashboardContentState extends State<DashboardContent> {
               const SizedBox(height: 4),
               Text(
                 '$program • $yearLevel',
-                style: const TextStyle(color: Color(0xFF800000), fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  color: Color(0xFF800000),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const Divider(height: 24),
               ListTile(
@@ -588,7 +611,10 @@ class _DashboardContentState extends State<DashboardContent> {
               if (address.isNotEmpty)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.location_on_outlined, color: Color(0xFF800000)),
+                  leading: const Icon(
+                    Icons.location_on_outlined,
+                    color: Color(0xFF800000),
+                  ),
                   title: const Text('Address'),
                   subtitle: Text(address),
                 ),
@@ -599,8 +625,8 @@ class _DashboardContentState extends State<DashboardContent> {
     );
   }
 
-  // 1. Header Widget (Weather + Time & Location)
-  Widget _buildHeaderCard() {
+  // 1. Weather Header Card Widget (Overflow-safe with GPS sync)
+  Widget _buildWeatherHeader() {
     final hour = _clockNow.hour.toString().padLeft(2, '0');
     final minute = _clockNow.minute.toString().padLeft(2, '0');
     final timeStr = '$hour:$minute';
@@ -609,260 +635,48 @@ class _DashboardContentState extends State<DashboardContent> {
       future: _weatherFuture,
       builder: (context, snapshot) {
         final data = snapshot.data;
-        final temp = data?['temperature_2m'] ?? 31;
-        final wind = data?['wind_speed_10m'] ?? 7;
-        final humidity = data?['relative_humidity_2m'] ?? 56;
+        final temp = (data?['temperature_2m'] as num?)?.toInt() ?? 31;
+        final wind = (data?['wind_speed_10m'] as num?)?.toInt() ?? 7;
+        final humidity = (data?['relative_humidity_2m'] as num?)?.toInt() ?? 56;
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Left Column: Weather Info
-              Expanded(
-                flex: 5,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.wb_sunny_rounded,
-                      color: Color(0xFFF9A825),
-                      size: 38,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              Text(
-                                '$temp°C',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1E1E1E),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'Sunny',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1E1E1E),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Wind NW ${wind}km/h\nHumidity $humidity%',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              height: 1.25,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                height: 48,
-                width: 1,
-                color: Colors.grey.shade200,
-                margin: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              // Right Column: Time, Date, Location
-              Expanded(
-                flex: 6,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      timeStr.isNotEmpty ? timeStr : '10:49',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E1E1E),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Tuesday, 27 October 2026',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF424242),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          'Manggahan, General Trias',
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        return WeatherHeaderCardWidget(
+          temperature: temp,
+          condition: 'Sunny',
+          windSpeed: wind,
+          humidity: humidity,
+          time: timeStr.isNotEmpty ? timeStr : '10:49',
+          date: 'Tuesday, 27 October 2026',
+          location: 'Manggahan, General Trias',
+          isGpsActive: _isGpsActive,
+          onLocationTap: _refreshLocationAndWeather,
         );
       },
     );
   }
 
-  // 2. User Profile Card
-  Widget _buildUserProfileCard() {
-    const maroonColor = Color(0xFF800000);
-    const studentName = 'Novy Chariz Tablac';
-    const studentSubtitle = '2024-2-02204 • BSIT-WM • 3rd Year';
-    const studentEmail = '2024-2-02204@lpucoverwork.edu.ph';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ProfileAvatar(
-                bytes: widget.preferences.profilePhotoBytes,
-                initials: 'N',
-                radius: 22,
-                backgroundColor: maroonColor,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      studentName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E1E1E),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      studentSubtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF616161),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Email: $studentEmail',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => _showFullProfile(
-                  name: studentName,
-                  studentId: '2024-2-02204',
-                  email: studentEmail,
-                  program: 'BSIT-WM',
-                  yearLevel: '3rd Year',
-                  contact: '+63 912 345 6789',
-                  address: 'Manggahan, General Trias, Cavite',
-                ),
-                child: const Text(
-                  'View Full Profile',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: maroonColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 34,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: maroonColor,
-                side: const BorderSide(color: maroonColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: EdgeInsets.zero,
-              ),
-              onPressed: widget.onRegisterStudent,
-              icon: const Icon(Icons.edit_outlined, size: 14),
-              label: const Text(
-                'Edit Profile',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
+  // 2. User Overview Card Widget
+  Widget _buildOverviewCard() {
+    return OverviewCardWidget(
+      name: 'Novy Chariz Tablac',
+      studentId: '2024-2-02204',
+      program: 'BSIT-WM',
+      yearLevel: '3rd Year',
+      email: '2024-2-02204@lpunetwork.edu.ph',
+      profilePhotoBytes: widget.preferences.profilePhotoBytes,
+      onEditProfile: widget.onRegisterStudent,
+      onViewFullProfile: () => _showFullProfile(
+        name: 'Novy Chariz Tablac',
+        studentId: '2024-2-02204',
+        email: '2024-2-02204@lpunetwork.edu.ph',
+        program: 'BSIT-WM',
+        yearLevel: '3rd Year',
+        contact: '+63 912 345 6789',
+        address: 'Manggahan, General Trias, Cavite',
       ),
     );
   }
 
-  // 3. Quick Actions (2x3 grid)
+  // 3. Quick Actions Grid with dynamic Wi-Fi & GPS sync
   Widget _buildQuickActions() {
     return GridView.count(
       crossAxisCount: 3,
@@ -880,7 +694,10 @@ class _DashboardContentState extends State<DashboardContent> {
         QuickActionButton(
           label: 'GPS',
           icon: Icons.gps_fixed_outlined,
-          onTap: _showGpsStatus,
+          statusDotColor:
+              _isGpsActive ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+          statusText: _isGpsActive ? 'Active' : 'Disabled',
+          onTap: _refreshLocationAndWeather,
         ),
         QuickActionButton(
           label: 'API',
@@ -890,6 +707,10 @@ class _DashboardContentState extends State<DashboardContent> {
         QuickActionButton(
           label: 'Wi-Fi',
           icon: Icons.wifi,
+          statusDotColor: _isWifiConnected
+              ? const Color(0xFF2E7D32)
+              : const Color(0xFFC62828),
+          statusText: _isWifiConnected ? 'Online' : 'Offline',
           onTap: _showNetworkStatus,
         ),
         QuickActionButton(
@@ -916,7 +737,7 @@ class _DashboardContentState extends State<DashboardContent> {
     ];
 
     return SizedBox(
-      height: 96,
+      height: 108,
       child: Row(
         children: [
           Expanded(
@@ -933,7 +754,7 @@ class _DashboardContentState extends State<DashboardContent> {
                 final isDay = localTime.hour >= 6 && localTime.hour < 18;
 
                 return Container(
-                  width: 150,
+                  width: 154,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -946,7 +767,10 @@ class _DashboardContentState extends State<DashboardContent> {
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -963,7 +787,9 @@ class _DashboardContentState extends State<DashboardContent> {
                             ),
                           ),
                           Icon(
-                            isDay ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+                            isDay
+                                ? Icons.wb_sunny_outlined
+                                : Icons.nightlight_round,
                             color: maroonColor,
                             size: 14,
                           ),
@@ -972,7 +798,7 @@ class _DashboardContentState extends State<DashboardContent> {
                       Text(
                         '$hour:$minute $period',
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1E1E1E),
                         ),
@@ -982,7 +808,7 @@ class _DashboardContentState extends State<DashboardContent> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 9.5,
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -999,110 +825,16 @@ class _DashboardContentState extends State<DashboardContent> {
     );
   }
 
-  // 5. Academic Calendar (Mini calendar with month nav & event feed)
-  Widget _buildAcademicCalendar() {
-    const maroonColor = Color(0xFF800000);
-    final days = [
-      ('Mon', 26),
-      ('Tue', 27),
-      ('Wed', 28),
-      ('Thur', 29),
-      ('Fri', 30),
-      ('Sat', 31),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'October 2026',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E1E1E),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: Colors.grey.shade600,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: days.map((item) {
-              final isSelected = item.$2 == _selectedCalendarDate.day;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedCalendarDate = DateTime(2026, 10, item.$2);
-                  });
-                },
-                child: Column(
-                  children: [
-                    Text(
-                      item.$1,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey.shade500,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: isSelected ? maroonColor : Colors.transparent,
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${item.$2}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : const Color(0xFF1E1E1E),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 14),
-          const Divider(height: 1),
-          const SizedBox(height: 10),
-          Text(
-            'No upcoming events.',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+  // 5. Swipeable Week Calendar
+  Widget _buildCalendarWidget() {
+    return SwipeableWeekCalendarWidget(
+      selectedDate: _selectedCalendarDate,
+      onDateSelected: (newDate) {
+        setState(() {
+          _selectedCalendarDate = newDate;
+        });
+      },
+      eventText: 'No upcoming events.',
     );
   }
 
@@ -1113,7 +845,8 @@ class _DashboardContentState extends State<DashboardContent> {
       builder: (context, snapshot) {
         final activities = snapshot.data ?? [];
         final hasActivities = activities.isNotEmpty;
-        final title = hasActivities ? activities.first.title : 'Logged in to portal';
+        final title =
+            hasActivities ? activities.first.title : 'Logged in to portal';
 
         return Container(
           decoration: BoxDecoration(
@@ -1174,7 +907,7 @@ class _DashboardContentState extends State<DashboardContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeaderCard(),
+            _buildWeatherHeader(),
             const SizedBox(height: 16),
             const Text(
               'Overview',
@@ -1185,7 +918,7 @@ class _DashboardContentState extends State<DashboardContent> {
               ),
             ),
             const SizedBox(height: 10),
-            _buildUserProfileCard(),
+            _buildOverviewCard(),
             const SizedBox(height: 16),
             const Text(
               'Quick Actions',
@@ -1218,7 +951,7 @@ class _DashboardContentState extends State<DashboardContent> {
               ),
             ),
             const SizedBox(height: 10),
-            _buildAcademicCalendar(),
+            _buildCalendarWidget(),
             const SizedBox(height: 16),
             const Text(
               'Recent Activity',
