@@ -47,74 +47,39 @@ class AboutLpuPage extends StatelessWidget {
 class AboutLpuContent extends StatelessWidget {
   const AboutLpuContent({super.key});
 
-  static Widget _buildElevatedCard({
+  static Widget _buildSection({
     required BuildContext context,
     required String title,
     required String description,
-    required IconData icon,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = Theme.of(context).cardColor;
-    final borderColor = Theme.of(context).dividerColor;
     final textColor = isDark ? AppTokens.textDark : AppTokens.textLight;
-    final secondaryTextColor =
-        isDark ? AppTokens.textSecondaryDark : AppTokens.textSecondaryLight;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-        boxShadow: AppTokens.softCardShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: const BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: AppTokens.maroonPrimary,
-                width: 4.0, // 4px LPU Maroon left accent border
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTokens.maroonPrimary,
             ),
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    icon,
-                    size: 20,
-                    color: AppTokens.maroonPrimary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppTokens.maroonPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  height: 1.45,
-                  color: textColor,
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              height: 1.55,
+              color: textColor,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -134,22 +99,15 @@ class AboutLpuContent extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTokens.maroonPrimary.withValues(alpha: 0.1),
-              ),
-              padding: const EdgeInsets.all(4),
-              child: Image.asset(
-                'assets/img/lpu-logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.school,
-                  color: AppTokens.maroonPrimary,
-                  size: 28,
-                ),
+            Image.asset(
+              'assets/img/lpu-logo.png',
+              width: 42,
+              height: 42,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.school,
+                color: AppTokens.maroonPrimary,
+                size: 28,
               ),
             ),
             const SizedBox(width: 12),
@@ -183,24 +141,23 @@ class AboutLpuContent extends StatelessWidget {
         const Divider(height: 1),
         const SizedBox(height: 16),
 
-        // Three Formatted Elevated Cards with 4px Maroon Left Border
-        _buildElevatedCard(
+        _buildSection(
           context: context,
           title: 'Vision',
           description:
               'To be a recognized leading university in the Asia-Pacific region by 2030, '
               'committed to academic excellence, continuous innovation, and community engagement.',
-          icon: Icons.visibility_outlined,
         ),
-        _buildElevatedCard(
+        const Divider(height: 1),
+        _buildSection(
           context: context,
           title: 'Mission',
           description:
               'LPU is dedicated to advancing knowledge, cultivating high moral values, '
               'and nurturing world-class competence through quality education and research.',
-          icon: Icons.track_changes_outlined,
         ),
-        _buildElevatedCard(
+        const Divider(height: 1),
+        _buildSection(
           context: context,
           title: 'Core Values (4L)',
           description:
@@ -209,7 +166,6 @@ class AboutLpuContent extends StatelessWidget {
               '• Love of Learning (Scientia)\n'
               '• Love of Fellowmen (Caritas)\n\n'
               'These values serve as the guiding pillar of every Lycean in their pursuit of excellence and service.',
-          icon: Icons.favorite_border_rounded,
         ),
       ],
     );
