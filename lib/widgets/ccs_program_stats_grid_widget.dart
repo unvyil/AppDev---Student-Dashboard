@@ -66,9 +66,12 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
   ];
 
   Widget _buildCard(BuildContext context, CcsProgramData program) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF262626) : Colors.white;
+    final textColor = isDark ? const Color(0xFFFAFDEA) : const Color(0xFF171717);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
@@ -96,10 +99,10 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
                   children: [
                     Text(
                       program.code,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E1E1E),
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -139,10 +142,10 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
                         fit: BoxFit.scaleDown,
                         child: Text(
                           '${program.count}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E1E1E),
+                            color: textColor,
                           ),
                         ),
                       ),
@@ -180,17 +183,19 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: programs.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 140,
+        LayoutBuilder(
+          builder: (context, constraints) => GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: programs.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              mainAxisExtent: constraints.maxWidth < 360 ? 156 : 148,
+            ),
+            itemBuilder: (context, index) => _buildCard(context, programs[index]),
           ),
-          itemBuilder: (context, index) => _buildCard(context, programs[index]),
         ),
       ],
     );

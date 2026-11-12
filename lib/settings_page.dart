@@ -5,10 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import 'about_lpu_page.dart';
+import 'auth_page.dart';
 import 'registration_page.dart';
 import 'services/app_preferences.dart';
 import 'services/file_service.dart';
 import 'services/storage_service.dart';
+import 'theme/app_theme.dart';
 import 'widgets/profile_avatar.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -50,7 +53,16 @@ class _SettingsPageState extends State<SettingsPage> {
       final file = await FileService.exportStudents();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Student records exported to ${file.path}')),
+        SnackBar(
+          content: Text('File exported successfully to:\n${file.path}'),
+          duration: const Duration(seconds: 4),
+          backgroundColor: AppTokens.maroonPrimary,
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -298,9 +310,22 @@ class _SettingsPageState extends State<SettingsPage> {
         final content = ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'Settings',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Settings',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (!widget.showAppBar)
+                  IconButton(
+                    tooltip: 'About LPU',
+                    icon: const Icon(Icons.info_outline),
+                    color: AppTokens.maroonPrimary,
+                    onPressed: () => showAboutLpuModal(context),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             FutureBuilder<List<Student>>(
@@ -514,6 +539,16 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
+                    leading: const Icon(Icons.school_outlined,
+                        color: AppTokens.maroonPrimary),
+                    title: const Text('About LPU-Cavite'),
+                    subtitle:
+                        const Text('Vision, Mission, and Core Values (4L)'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => showAboutLpuModal(context),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
                     leading: const Icon(Icons.privacy_tip_outlined),
                     title: const Text('LPU Privacy Policy'),
                     trailing: const Icon(Icons.chevron_right),
@@ -526,6 +561,27 @@ class _SettingsPageState extends State<SettingsPage> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _showSystemInfo,
                   ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: const Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AuthPage(preferences: widget.preferences),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -533,7 +589,16 @@ class _SettingsPageState extends State<SettingsPage> {
         );
         if (!widget.showAppBar) return content;
         return Scaffold(
-          appBar: AppBar(title: const Text('Settings')),
+          appBar: AppBar(
+            title: const Text('Settings'),
+            actions: [
+              IconButton(
+                tooltip: 'About LPU',
+                icon: const Icon(Icons.info_outline),
+                onPressed: () => showAboutLpuModal(context),
+              ),
+            ],
+          ),
           body: content,
         );
       },

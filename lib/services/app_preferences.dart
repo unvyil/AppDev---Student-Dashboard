@@ -8,13 +8,20 @@ class AppPreferences extends ChangeNotifier {
   static const _darkModeKey = 'dark_mode';
   static const _mockDataKey = 'mock_data';
   static const _profilePhotoKey = 'profile_photo';
+  static const _rememberMeKey = 'remember_me';
+  static const _savedUserIdKey = 'saved_user_id';
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _useMockData = false;
+  bool _rememberMe = true;
+  String _savedUserId = '2024-2-02204';
   String? _profilePhotoBase64;
 
   ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
   bool get useMockData => _useMockData;
+  bool get rememberMe => _rememberMe;
+  String get savedUserId => _savedUserId;
   String? get profilePhotoBase64 => _profilePhotoBase64;
 
   Uint8List? get profilePhotoBytes {
@@ -29,10 +36,11 @@ class AppPreferences extends ChangeNotifier {
 
   Future<void> load() async {
     final preferences = await SharedPreferences.getInstance();
-    _themeMode = preferences.getBool(_darkModeKey) ?? false
-        ? ThemeMode.dark
-        : ThemeMode.light;
+    final isDark = preferences.getBool(_darkModeKey) ?? false;
+    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     _useMockData = preferences.getBool(_mockDataKey) ?? false;
+    _rememberMe = preferences.getBool(_rememberMeKey) ?? true;
+    _savedUserId = preferences.getString(_savedUserIdKey) ?? '2024-2-02204';
     _profilePhotoBase64 = preferences.getString(_profilePhotoKey);
     notifyListeners();
   }
@@ -60,6 +68,15 @@ class AppPreferences extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setRememberMe(bool enabled, String userId) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_rememberMeKey, enabled);
+    await preferences.setString(_savedUserIdKey, userId);
+    _rememberMe = enabled;
+    _savedUserId = userId;
+    notifyListeners();
+  }
+
   Future<void> setUseMockData(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_mockDataKey, enabled);
@@ -73,6 +90,8 @@ class AppPreferences extends ChangeNotifier {
     _themeMode = ThemeMode.light;
     _useMockData = false;
     _profilePhotoBase64 = null;
+    _rememberMe = true;
+    _savedUserId = '2024-2-02204';
     notifyListeners();
   }
 }

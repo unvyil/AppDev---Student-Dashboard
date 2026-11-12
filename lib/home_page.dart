@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
+import 'about_lpu_page.dart';
 import 'faculty_page.dart';
 import 'registration_page.dart';
 import 'services/app_preferences.dart';
 import 'services/storage_service.dart';
 import 'settings_page.dart';
 import 'students_page.dart';
+import 'theme/app_theme.dart';
 import 'widgets/overview_card_widget.dart';
 import 'widgets/quick_action_button.dart';
 import 'widgets/swipeable_week_calendar_widget.dart';
@@ -158,7 +160,6 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
         backgroundColor: maroonColor,
         elevation: 0,
@@ -184,6 +185,11 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'About LPU',
+            icon: const Icon(Icons.info_outline, size: 24, color: Colors.white),
+            onPressed: () => showAboutLpuModal(context),
+          ),
           IconButton(
             tooltip: 'Notifications',
             icon: Stack(
@@ -216,9 +222,6 @@ class _HomePageState extends State<HomePage> {
         onTap: (index) {
           setState(() => _selectedIndex = index);
         },
-        backgroundColor: Colors.white,
-        selectedItemColor: maroonColor,
-        unselectedItemColor: Colors.grey.shade500,
         type: BottomNavigationBarType.fixed,
         selectedFontSize: 12,
         unselectedFontSize: 12,
@@ -730,6 +733,13 @@ class _DashboardContentState extends State<DashboardContent> {
   // 4. World Clock Section
   Widget _buildWorldClock() {
     const maroonColor = Color(0xFF800000);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+    final borderColor = Theme.of(context).dividerColor;
+    final textColor = isDark ? AppTokens.textDark : AppTokens.textLight;
+    final secondaryTextColor =
+        isDark ? AppTokens.textSecondaryDark : AppTokens.textSecondaryLight;
+
     final cities = [
       ('Manila', 8, 'PHT · Philippines'),
       ('Tokyo', 9, 'JST · Japan'),
@@ -756,9 +766,9 @@ class _DashboardContentState extends State<DashboardContent> {
                 return Container(
                   width: 154,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(color: borderColor),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.02),
@@ -780,9 +790,11 @@ class _DashboardContentState extends State<DashboardContent> {
                           Expanded(
                             child: Text(
                               city.$1,
-                              style: const TextStyle(
+                              style: TextStyle(
+                                fontFamily: 'Inter',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
+                                color: textColor,
                               ),
                             ),
                           ),
@@ -790,17 +802,18 @@ class _DashboardContentState extends State<DashboardContent> {
                             isDay
                                 ? Icons.wb_sunny_outlined
                                 : Icons.nightlight_round,
-                            color: maroonColor,
+                            color: isDark ? AppTokens.accentLime : maroonColor,
                             size: 14,
                           ),
                         ],
                       ),
                       Text(
                         '$hour:$minute $period',
-                        style: const TextStyle(
+                        style: TextStyle(
+                          fontFamily: 'Inter',
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E1E1E),
+                          color: textColor,
                         ),
                       ),
                       Text(
@@ -808,8 +821,9 @@ class _DashboardContentState extends State<DashboardContent> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          fontFamily: 'Inter',
                           fontSize: 9.5,
-                          color: Colors.grey.shade600,
+                          color: secondaryTextColor,
                         ),
                       ),
                     ],
@@ -819,7 +833,7 @@ class _DashboardContentState extends State<DashboardContent> {
             ),
           ),
           const SizedBox(width: 4),
-          Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+          Icon(Icons.chevron_right, color: secondaryTextColor, size: 20),
         ],
       ),
     );
@@ -840,6 +854,13 @@ class _DashboardContentState extends State<DashboardContent> {
 
   // 6. Recent Activity Feed
   Widget _buildRecentActivityFeed() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+    final borderColor = Theme.of(context).dividerColor;
+    final textColor = isDark ? AppTokens.textDark : AppTokens.textLight;
+    final secondaryTextColor =
+        isDark ? AppTokens.textSecondaryDark : AppTokens.textSecondaryLight;
+
     return FutureBuilder<List<RecentActivity>>(
       future: _activityFuture,
       builder: (context, snapshot) {
@@ -850,9 +871,9 @@ class _DashboardContentState extends State<DashboardContent> {
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.03),
@@ -876,18 +897,20 @@ class _DashboardContentState extends State<DashboardContent> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    fontFamily: 'Inter',
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1E1E1E),
+                    color: textColor,
                   ),
                 ),
               ),
               Text(
                 '5m ago',
                 style: TextStyle(
+                  fontFamily: 'Inter',
                   fontSize: 10,
-                  color: Colors.grey.shade500,
+                  color: secondaryTextColor,
                 ),
               ),
             ],

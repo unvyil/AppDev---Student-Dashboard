@@ -43,9 +43,7 @@ class _StudentsPageState extends State<StudentsPage> {
   void _openEditStudent(Student student) async {
     await Navigator.push<void>(
       context,
-      MaterialPageRoute(
-        builder: (_) => RegistrationPage(student: student),
-      ),
+      MaterialPageRoute(builder: (_) => RegistrationPage(student: student)),
     );
     _refresh();
   }
@@ -67,7 +65,10 @@ class _StudentsPageState extends State<StudentsPage> {
               ),
               const SizedBox(height: 12),
               ListTile(
-                leading: const Icon(Icons.people_outline, color: Color(0xFF800000)),
+                leading: const Icon(
+                  Icons.people_outline,
+                  color: Color(0xFF800000),
+                ),
                 title: const Text('All Tracks'),
                 onTap: () {
                   setState(() => _searchQuery = '');
@@ -94,7 +95,10 @@ class _StudentsPageState extends State<StudentsPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.query_stats, color: Color(0xFF800000)),
+                leading: const Icon(
+                  Icons.query_stats,
+                  color: Color(0xFF800000),
+                ),
                 title: const Text('BSCS-DS (Data Science)'),
                 onTap: () {
                   setState(() => _searchQuery = 'BSCS-DS');
@@ -120,10 +124,15 @@ class _StudentsPageState extends State<StudentsPage> {
 
   Widget _buildSegmentedToggle() {
     const maroonColor = Color(0xFF800000);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final toggleBg = isDark ? const Color(0xFF262626) : const Color(0xFFE8E8EC);
+    final inactiveTextColor =
+        isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+
     return Container(
       height: 38,
       decoration: BoxDecoration(
-        color: const Color(0xFFE8E8EC),
+        color: toggleBg,
         borderRadius: BorderRadius.circular(20),
       ),
       padding: const EdgeInsets.all(3),
@@ -135,16 +144,21 @@ class _StudentsPageState extends State<StudentsPage> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: _selectedTabIndex == 0 ? maroonColor : Colors.transparent,
+                  color: _selectedTabIndex == 0
+                      ? maroonColor
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Students',
                   style: TextStyle(
+                    fontFamily: 'Inter',
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: _selectedTabIndex == 0 ? Colors.white : Colors.grey.shade700,
+                    color: _selectedTabIndex == 0
+                        ? Colors.white
+                        : inactiveTextColor,
                   ),
                 ),
               ),
@@ -156,16 +170,21 @@ class _StudentsPageState extends State<StudentsPage> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: _selectedTabIndex == 1 ? maroonColor : Colors.transparent,
+                  color: _selectedTabIndex == 1
+                      ? maroonColor
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Program Stats',
                   style: TextStyle(
+                    fontFamily: 'Inter',
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: _selectedTabIndex == 1 ? Colors.white : Colors.grey.shade700,
+                    color: _selectedTabIndex == 1
+                        ? Colors.white
+                        : inactiveTextColor,
                   ),
                 ),
               ),
@@ -177,29 +196,38 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   Widget _buildSearchBar() {
+    final cardColor = Theme.of(context).cardColor;
+    final borderColor = Theme.of(context).dividerColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
         Expanded(
           child: Container(
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: borderColor),
             ),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(fontSize: 14),
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
               onChanged: (val) => setState(() => _searchQuery = val.trim()),
               decoration: InputDecoration(
                 hintText: 'Search students...',
                 hintStyle: TextStyle(
-                  color: Colors.grey.shade400,
+                  fontFamily: 'Inter',
+                  color: Colors.grey.shade500,
                   fontSize: 14,
                 ),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: Colors.grey.shade400,
+                  color: Colors.grey.shade500,
                   size: 20,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -218,14 +246,14 @@ class _StudentsPageState extends State<StudentsPage> {
           height: 44,
           width: 44,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: borderColor),
           ),
           child: IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.tune,
-              color: Color(0xFF1E1E1E),
+              color: isDark ? Colors.white70 : const Color(0xFF1E1E1E),
               size: 20,
             ),
             onPressed: _showFilterSheet,
@@ -271,9 +299,9 @@ class _StudentsPageState extends State<StudentsPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Center(
               child: Column(
@@ -287,6 +315,7 @@ class _StudentsPageState extends State<StudentsPage> {
                   Text(
                     'No student records found',
                     style: TextStyle(
+                      fontFamily: 'Inter',
                       color: Colors.grey.shade600,
                       fontWeight: FontWeight.w600,
                     ),
@@ -308,7 +337,6 @@ class _StudentsPageState extends State<StudentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -350,7 +378,9 @@ class _StudentsPageState extends State<StudentsPage> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.red.shade200),
                           ),
-                          child: Text('Error loading students: ${snapshot.error}'),
+                          child: Text(
+                            'Error loading students: ${snapshot.error}',
+                          ),
                         );
                       }
                       final students = snapshot.data ?? [];

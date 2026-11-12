@@ -137,8 +137,11 @@ class _FacultyPageState extends State<FacultyPage> {
           f.email.toLowerCase().contains(q);
     }).toList();
 
+    final cardColor = Theme.of(context).cardColor;
+    final borderColor = Theme.of(context).dividerColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -150,23 +153,29 @@ class _FacultyPageState extends State<FacultyPage> {
                   child: Container(
                     height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: borderColor),
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style: const TextStyle(fontSize: 14),
-                      onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                      onChanged: (val) =>
+                          setState(() => _searchQuery = val.trim()),
                       decoration: InputDecoration(
                         hintText: 'Search faculty...',
                         hintStyle: TextStyle(
-                          color: Colors.grey.shade400,
+                          fontFamily: 'Inter',
+                          color: Colors.grey.shade500,
                           fontSize: 14,
                         ),
                         prefixIcon: Icon(
                           Icons.search,
-                          color: Colors.grey.shade400,
+                          color: Colors.grey.shade500,
                           size: 20,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -185,14 +194,14 @@ class _FacultyPageState extends State<FacultyPage> {
                   height: 44,
                   width: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(color: borderColor),
                   ),
                   child: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.tune,
-                      color: Color(0xFF1E1E1E),
+                      color: isDark ? Colors.white70 : const Color(0xFF1E1E1E),
                       size: 20,
                     ),
                     onPressed: _showFilterSheet,
@@ -206,9 +215,9 @@ class _FacultyPageState extends State<FacultyPage> {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Center(
                   child: Column(
