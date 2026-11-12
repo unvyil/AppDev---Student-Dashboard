@@ -30,12 +30,14 @@ class OverviewCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -68,22 +70,24 @@ class OverviewCardWidget extends StatelessWidget {
                             name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E1E1E),
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ),
                         if (onViewFullProfile != null)
                           GestureDetector(
                             onTap: onViewFullProfile,
-                            child: const Text(
+                            child: Text(
                               'View Full Profile',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: maroonColor,
+                                color: isDark
+                                    ? const Color(0xFFE0B0B0)
+                                    : maroonColor,
                               ),
                             ),
                           ),
@@ -94,9 +98,9 @@ class OverviewCardWidget extends StatelessWidget {
                       '$studentId • $program • $yearLevel',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF616161),
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -107,7 +111,7 @@ class OverviewCardWidget extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey.shade600,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -121,8 +125,11 @@ class OverviewCardWidget extends StatelessWidget {
             height: 36,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: maroonColor,
-                side: const BorderSide(color: maroonColor, width: 1.2),
+                foregroundColor: isDark ? const Color(0xFFE0B0B0) : maroonColor,
+                side: BorderSide(
+                  color: isDark ? const Color(0xFFE0B0B0) : maroonColor,
+                  width: 1.2,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),

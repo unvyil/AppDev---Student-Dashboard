@@ -26,12 +26,14 @@ class WeatherHeaderCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -69,19 +71,19 @@ class WeatherHeaderCardWidget extends StatelessWidget {
                           children: [
                             Text(
                               '$temperature°C',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E1E1E),
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               condition,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF1E1E1E),
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
                           ],
@@ -95,7 +97,7 @@ class WeatherHeaderCardWidget extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 9.5,
                           height: 1.25,
-                          color: Colors.grey.shade600,
+                          color: theme.colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -108,7 +110,7 @@ class WeatherHeaderCardWidget extends StatelessWidget {
           Container(
             height: 48,
             width: 1,
-            color: Colors.grey.shade200,
+            color: theme.dividerColor,
             margin: const EdgeInsets.symmetric(horizontal: 8),
           ),
           // Right Column: Time, Date, Location
@@ -123,10 +125,10 @@ class WeatherHeaderCardWidget extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: Text(
                     time,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E1E1E),
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -136,10 +138,10 @@ class WeatherHeaderCardWidget extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: Text(
                     date,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF424242),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -171,7 +173,7 @@ class WeatherHeaderCardWidget extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 9.5,
                               color: isGpsActive
-                                  ? Colors.grey.shade700
+                                  ? theme.colorScheme.onSurfaceVariant
                                   : Colors.grey.shade500,
                               fontWeight: FontWeight.w500,
                             ),

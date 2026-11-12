@@ -22,13 +22,15 @@ class KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -45,12 +47,11 @@ class KpiCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade600,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -69,10 +70,10 @@ class KpiCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E1E1E),
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               if (badge != null) ...[
@@ -83,7 +84,7 @@ class KpiCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: badgeColor ?? const Color(0xFFE8F5E9),
+                    color: badgeColor ?? (isDark ? const Color(0xFF333333) : const Color(0xFFE8F5E9)),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -91,7 +92,7 @@ class KpiCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: badgeTextColor ?? const Color(0xFF2E7D32),
+                      color: badgeTextColor ?? (isDark ? const Color(0xFFE0B0B0) : const Color(0xFF2E7D32)),
                     ),
                   ),
                 ),

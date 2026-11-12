@@ -3,130 +3,116 @@ import 'package:flutter/material.dart';
 class StudentKpiRowWidget extends StatelessWidget {
   const StudentKpiRowWidget({
     super.key,
-    this.totalStudents = 428,
-    this.activeStudents = 401,
-    this.activeTrend = '+4%',
-    this.avgAttendance = '93%',
+    this.totalStudents = 0,
+    this.activeStudents = 0,
+    this.avgAttendance = '0%',
   });
 
   final int totalStudents;
   final int activeStudents;
-  final String activeTrend;
   final String avgAttendance;
 
-  Widget _buildCard({
+  Widget _statCard(
+    BuildContext context, {
     required String title,
     required String value,
-    Widget? badge,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 92,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: theme.dividerColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          SizedBox(
+            height: 26,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  height: 1.15,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 6),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Flexible(
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E1E1E),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 27,
+                      height: 1,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ),
-              if (badge != null) ...[
-                const SizedBox(width: 4),
-                badge,
-              ],
             ],
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildCard(
-            title: 'Total Students',
-            value: '$totalStudents',
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildCard(
-            title: 'Active Students',
-            value: '$activeStudents',
-            badge: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                activeTrend,
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E7D32),
-                ),
+    final activeRate = totalStudents == 0 ? 0.0 : activeStudents / totalStudents;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const columns = 3;
+        final gap = 8.0;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: _statCard(
+                context,
+                title: 'Total students',
+                value: '$totalStudents',
               ),
             ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildCard(
-            title: 'Avg. Attendance',
-            value: avgAttendance,
-            badge: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Icon(
-                Icons.arrow_upward,
-                size: 9,
-                color: Color(0xFF2E7D32),
+            SizedBox(
+              width: width,
+              child: _statCard(
+                context,
+                title: 'Active students',
+                value: '$activeStudents',
               ),
             ),
-          ),
-        ),
-      ],
+            SizedBox(
+              width: width,
+              child: _statCard(
+                context,
+                title: 'Avg. attendance',
+                value: avgAttendance,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

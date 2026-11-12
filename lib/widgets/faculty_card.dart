@@ -32,14 +32,16 @@ class FacultyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const maroonColor = Color(0xFF800000);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -76,10 +78,10 @@ class FacultyCard extends StatelessWidget {
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E1E1E),
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -89,7 +91,7 @@ class FacultyCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey.shade600,
+                          color: theme.colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -99,7 +101,7 @@ class FacultyCard extends StatelessWidget {
                           Icon(
                             Icons.email_outlined,
                             size: 12,
-                            color: Colors.grey.shade500,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -109,7 +111,7 @@ class FacultyCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.grey.shade700,
+                            color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -121,14 +123,14 @@ class FacultyCard extends StatelessWidget {
                           Icon(
                             Icons.phone_outlined,
                             size: 12,
-                            color: Colors.grey.shade500,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             phone,
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey.shade700,
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -172,8 +174,10 @@ class FacultyCard extends StatelessWidget {
                     height: 32,
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: maroonColor,
-                        side: const BorderSide(color: maroonColor),
+                        foregroundColor: isDark ? const Color(0xFFE0B0B0) : maroonColor,
+                        side: BorderSide(
+                          color: isDark ? const Color(0xFFE0B0B0) : maroonColor,
+                        ),
                         padding: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6),

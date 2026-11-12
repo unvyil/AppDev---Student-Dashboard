@@ -96,12 +96,16 @@ class _SwipeableWeekCalendarWidgetState
       firstDate: DateTime(2020),
       lastDate: DateTime(2035),
       builder: (context, child) {
+        final appTheme = Theme.of(context);
+        final isDark = appTheme.brightness == Brightness.dark;
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: SwipeableWeekCalendarWidget.maroonColor,
-              onPrimary: Colors.white,
-              onSurface: Color(0xFF1E1E1E),
+          data: appTheme.copyWith(
+            colorScheme: appTheme.colorScheme.copyWith(
+              primary: isDark
+                  ? const Color(0xFFE0B0B0)
+                  : SwipeableWeekCalendarWidget.maroonColor,
+              onPrimary: isDark ? const Color(0xFF171717) : Colors.white,
+              onSurface: appTheme.colorScheme.onSurface,
             ),
           ),
           child: child ?? const SizedBox(),
@@ -129,15 +133,17 @@ class _SwipeableWeekCalendarWidgetState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final displayedTitle =
         '${_monthName(_currentDisplayedMonth.month)} ${_currentDisplayedMonth.year}';
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -160,17 +166,19 @@ class _SwipeableWeekCalendarWidgetState
                 children: [
                   Text(
                     displayedTitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E1E1E),
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right,
                     size: 18,
-                    color: Color(0xFF800000),
+                    color: isDark
+                        ? const Color(0xFFE0B0B0)
+                        : const Color(0xFF800000),
                   ),
                 ],
               ),
@@ -213,7 +221,7 @@ class _SwipeableWeekCalendarWidgetState
                             _weekdayAbbreviation(day.weekday),
                             style: TextStyle(
                               fontSize: 10,
-                              color: Colors.grey.shade500,
+                              color: theme.colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -223,7 +231,9 @@ class _SwipeableWeekCalendarWidgetState
                             height: 28,
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? SwipeableWeekCalendarWidget.maroonColor
+                                  ? (isDark
+                                      ? const Color(0xFFE0B0B0)
+                                      : SwipeableWeekCalendarWidget.maroonColor)
                                   : Colors.transparent,
                               shape: BoxShape.circle,
                             ),
@@ -234,8 +244,8 @@ class _SwipeableWeekCalendarWidgetState
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF1E1E1E),
+                                    ? (isDark ? const Color(0xFF171717) : Colors.white)
+                                    : theme.colorScheme.onSurface,
                               ),
                             ),
                           ),
@@ -254,7 +264,7 @@ class _SwipeableWeekCalendarWidgetState
             widget.eventText,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey.shade600,
+              color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),

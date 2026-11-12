@@ -10,11 +10,13 @@ class AppPreferences extends ChangeNotifier {
   static const _profilePhotoKey = 'profile_photo';
   static const _rememberMeKey = 'remember_me';
   static const _savedUserIdKey = 'saved_user_id';
+  static const _savedPasswordKey = 'saved_password';
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _useMockData = false;
-  bool _rememberMe = true;
-  String _savedUserId = '2024-2-02204';
+  bool _rememberMe = false;
+  String _savedUserId = '';
+  String _savedPassword = '';
   String? _profilePhotoBase64;
 
   ThemeMode get themeMode => _themeMode;
@@ -22,6 +24,7 @@ class AppPreferences extends ChangeNotifier {
   bool get useMockData => _useMockData;
   bool get rememberMe => _rememberMe;
   String get savedUserId => _savedUserId;
+  String get savedPassword => _savedPassword;
   String? get profilePhotoBase64 => _profilePhotoBase64;
 
   Uint8List? get profilePhotoBytes {
@@ -39,8 +42,13 @@ class AppPreferences extends ChangeNotifier {
     final isDark = preferences.getBool(_darkModeKey) ?? false;
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     _useMockData = preferences.getBool(_mockDataKey) ?? false;
-    _rememberMe = preferences.getBool(_rememberMeKey) ?? true;
-    _savedUserId = preferences.getString(_savedUserIdKey) ?? '2024-2-02204';
+    _rememberMe = preferences.getBool(_rememberMeKey) ?? false;
+    _savedUserId = _rememberMe
+        ? preferences.getString(_savedUserIdKey) ?? ''
+        : '';
+    _savedPassword = _rememberMe
+        ? preferences.getString(_savedPasswordKey) ?? ''
+        : '';
     _profilePhotoBase64 = preferences.getString(_profilePhotoKey);
     notifyListeners();
   }
@@ -68,12 +76,21 @@ class AppPreferences extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setRememberMe(bool enabled, String userId) async {
+  Future<void> setRememberMe(bool enabled, String userId, String password) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_rememberMeKey, enabled);
-    await preferences.setString(_savedUserIdKey, userId);
+    if (enabled && userId.trim().isNotEmpty) {
+      await preferences.setString(_savedUserIdKey, userId.trim());
+    } else {
+      await preferences.remove(_savedUserIdKey);
+      await preferences.remove(_savedPasswordKey);
+    }
+    if (enabled && userId.trim().isNotEmpty && password.isNotEmpty) {
+      await preferences.setString(_savedPasswordKey, password);
+    }
     _rememberMe = enabled;
-    _savedUserId = userId;
+    _savedUserId = enabled ? userId.trim() : '';
+    _savedPassword = enabled ? password : '';
     notifyListeners();
   }
 
@@ -90,8 +107,9 @@ class AppPreferences extends ChangeNotifier {
     _themeMode = ThemeMode.light;
     _useMockData = false;
     _profilePhotoBase64 = null;
-    _rememberMe = true;
-    _savedUserId = '2024-2-02204';
+    _rememberMe = false;
+    _savedUserId = '';
+    _savedPassword = '';
     notifyListeners();
   }
 }

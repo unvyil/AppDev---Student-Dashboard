@@ -69,12 +69,13 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF262626) : Colors.white;
     final textColor = isDark ? const Color(0xFFFAFDEA) : const Color(0xFF171717);
+    final secondaryTextColor = Theme.of(context).colorScheme.onSurfaceVariant;
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: Theme.of(context).dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -108,11 +109,10 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       program.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                       style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey.shade600,
+                        fontSize: 9,
+                        color: secondaryTextColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -126,12 +126,16 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: program.iconBackgroundColor,
+                        color: isDark
+                            ? const Color(0xFF333333)
+                            : program.iconBackgroundColor,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         program.icon,
-                        color: program.iconColor,
+                        color: isDark
+                            ? const Color(0xFFE0B0B0)
+                            : program.iconColor,
                         size: 24,
                       ),
                     ),
@@ -158,7 +162,7 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade500,
+                    color: secondaryTextColor,
                   ),
                 ),
               ],
@@ -174,12 +178,12 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'CCS Programmes',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1E1E1E),
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 12),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'services/portal_data_service.dart';
 import 'widgets/faculty_card.dart';
 
 class FacultyMember {
@@ -19,7 +20,9 @@ class FacultyMember {
 }
 
 class FacultyPage extends StatefulWidget {
-  const FacultyPage({super.key});
+  const FacultyPage({super.key, this.useMockData = false});
+
+  final bool useMockData;
 
   @override
   State<FacultyPage> createState() => _FacultyPageState();
@@ -28,6 +31,7 @@ class FacultyPage extends StatefulWidget {
 class _FacultyPageState extends State<FacultyPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  late Future<List<FacultyMember>> _facultyFuture;
 
   static const List<FacultyMember> _defaultFaculty = [
     FacultyMember(
@@ -81,6 +85,44 @@ class _FacultyPageState extends State<FacultyPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _facultyFuture = _loadFaculty();
+  }
+
+  @override
+  void didUpdateWidget(covariant FacultyPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.useMockData != widget.useMockData) {
+      setState(() {
+        _facultyFuture = _loadFaculty();
+      });
+    }
+  }
+
+  Future<List<FacultyMember>> _loadFaculty() async {
+    if (!widget.useMockData) return _defaultFaculty;
+    final users = await PortalDataService.fetchUsers();
+    return users.map((user) {
+      return FacultyMember(
+        name: user['name'] as String? ?? 'Faculty member',
+        department: user['company'] is Map
+            ? (user['company'] as Map)['name'] as String? ?? 'Academic Affairs'
+            : 'Academic Affairs',
+        email: user['email'] as String? ?? '',
+        phone: user['phone'] as String? ?? '',
+        initials: (user['name'] as String? ?? 'F')
+            .trim()
+            .split(RegExp(r'\s+'))
+            .where((part) => part.isNotEmpty)
+            .take(2)
+            .map((part) => part[0].toUpperCase())
+            .join(),
+      );
+    }).toList();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -129,23 +171,34 @@ class _FacultyPageState extends State<FacultyPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _defaultFaculty.where((f) {
-      if (_searchQuery.isEmpty) return true;
-      final q = _searchQuery.toLowerCase();
-      return f.name.toLowerCase().contains(q) ||
-          f.department.toLowerCase().contains(q) ||
-          f.email.toLowerCase().contains(q);
-    }).toList();
-
     final cardColor = Theme.of(context).cardColor;
     final borderColor = Theme.of(context).dividerColor;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(
+        child: FutureBuilder<List<FacultyMember>>(
+          future: _facultyFuture,
+          builder: (context, snapshot) {
+            final source = snapshot.data ??
+                (widget.useMockData ? <FacultyMember>[] : _defaultFaculty);
+            final filtered = source.where((f) {
+              if (_searchQuery.isEmpty) return true;
+              final q = _searchQuery.toLowerCase();
+              return f.name.toLowerCase().contains(q) ||
+                  f.department.toLowerCase().contains(q) ||
+                  f.email.toLowerCase().contains(q);
+            }).toList();
+            return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           children: [
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const LinearProgressIndicator(),
+            if (snapshot.hasError)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text('Could not load faculty mock data: ${snapshot.error}'),
+              ),
             // Search Bar with Filter Icon
             Row(
               children: [
@@ -162,7 +215,7 @@ class _FacultyPageState extends State<FacultyPage> {
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
-                        color: isDark ? Colors.white : Colors.black87,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       onChanged: (val) =>
                           setState(() => _searchQuery = val.trim()),
@@ -170,12 +223,12 @@ class _FacultyPageState extends State<FacultyPage> {
                         hintText: 'Search faculty...',
                         hintStyle: TextStyle(
                           fontFamily: 'Inter',
-                          color: Colors.grey.shade500,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 14,
                         ),
                         prefixIcon: Icon(
                           Icons.search,
-                          color: Colors.grey.shade500,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -201,7 +254,7 @@ class _FacultyPageState extends State<FacultyPage> {
                   child: IconButton(
                     icon: Icon(
                       Icons.tune,
-                      color: isDark ? Colors.white70 : const Color(0xFF1E1E1E),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
                     onPressed: _showFilterSheet,
@@ -222,12 +275,12 @@ class _FacultyPageState extends State<FacultyPage> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.search_off, size: 40, color: Colors.grey.shade400),
+                      Icon(Icons.search_off, size: 40, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       const SizedBox(height: 8),
                       Text(
                         'No faculty members found',
                         style: TextStyle(
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -255,6 +308,8 @@ class _FacultyPageState extends State<FacultyPage> {
                   },
                 ),
           ],
+            );
+          },
         ),
       ),
     );

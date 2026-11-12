@@ -24,12 +24,14 @@ class ProgramStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -54,20 +56,19 @@ class ProgramStatCard extends StatelessWidget {
                   children: [
                     Text(
                       code,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E1E1E),
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey.shade600,
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -81,12 +82,12 @@ class ProgramStatCard extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: iconBackgroundColor,
+                        color: isDark ? const Color(0xFF333333) : iconBackgroundColor,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         icon,
-                        color: iconColor,
+                        color: isDark ? const Color(0xFFE0B0B0) : iconColor,
                         size: 24,
                       ),
                     ),
@@ -94,10 +95,10 @@ class ProgramStatCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '$count',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E1E1E),
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -109,7 +110,7 @@ class ProgramStatCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade500,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

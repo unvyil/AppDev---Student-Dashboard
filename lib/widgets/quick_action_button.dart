@@ -20,12 +20,14 @@ class QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 3,
@@ -49,7 +51,7 @@ class QuickActionButton extends StatelessWidget {
                   children: [
                     Icon(
                       icon,
-                      color: iconColor,
+                      color: isDark ? const Color(0xFFE0B0B0) : iconColor,
                       size: 24,
                     ),
                     if (statusDotColor != null)
@@ -62,7 +64,7 @@ class QuickActionButton extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: statusDotColor,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
+                            border: Border.all(color: theme.cardColor, width: 1.5),
                           ),
                         ),
                       ),
@@ -71,20 +73,18 @@ class QuickActionButton extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  maxLines: 2,
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2C2C2C),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 if (statusText != null) ...[
                   const SizedBox(height: 1),
                   Text(
                     statusText!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                     style: TextStyle(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w500,

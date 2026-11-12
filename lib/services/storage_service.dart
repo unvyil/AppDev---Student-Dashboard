@@ -267,5 +267,6 @@ class StorageService {
       _key,
       jsonEncode(students.map((s) => s.toJson()).toList()),
     );
+    await recordActivity('Student record deleted', id);
   }
 }

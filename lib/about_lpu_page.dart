@@ -62,11 +62,11 @@ class AboutLpuContent extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppTokens.maroonPrimary,
+              color: isDark ? AppTokens.maroonOnDark : AppTokens.maroonPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -145,27 +145,32 @@ class AboutLpuContent extends StatelessWidget {
           context: context,
           title: 'Vision',
           description:
-              'To be a recognized leading university in the Asia-Pacific region by 2030, '
-              'committed to academic excellence, continuous innovation, and community engagement.',
+              'To be a recognized and accredited quality institution by 2030, distinguished by our commitment to quality systems and continuous improvement, dedicated to innovation, excellence and integrity in the service of God and country.',
         ),
         const Divider(height: 1),
         _buildSection(
           context: context,
           title: 'Mission',
           description:
-              'LPU is dedicated to advancing knowledge, cultivating high moral values, '
-              'and nurturing world-class competence through quality education and research.',
+              'The Lyceum of the Philippines University Cavite Inc., espousing the ideals of Jose P. Laurel, is committed to:\n\n'
+              '• Provide industry-based knowledge and skills\n'
+              '• Undertake multidisciplinary research\n'
+              '• Support community engagement and social responsibility\n'
+              '• Establish local and international linkages\n'
+              '• Produce sustainability advocates for global action',
         ),
         const Divider(height: 1),
         _buildSection(
           context: context,
           title: 'Core Values (4L)',
           description:
-              '• Love of God (Fides)\n'
-              '• Love of Country (Patria)\n'
-              '• Love of Learning (Scientia)\n'
-              '• Love of Fellowmen (Caritas)\n\n'
-              'These values serve as the guiding pillar of every Lycean in their pursuit of excellence and service.',
+              'L — Love of God\n'
+              'P — Professional Integrity\n'
+              'U — Unity\n'
+              'N — Nationalism\n'
+              'J — Justice\n'
+              'P — Perseverance\n'
+              'L — Leadership',
         ),
       ],
     );

@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'registration_page.dart';
 import 'services/storage_service.dart';
+import 'services/portal_data_service.dart';
 import 'widgets/ccs_program_stats_grid_widget.dart';
 import 'widgets/student_card.dart';
 import 'widgets/student_kpi_row_widget.dart';
 
 class StudentsPage extends StatefulWidget {
-  const StudentsPage({super.key});
+  const StudentsPage({super.key, this.useMockData = false});
+
+  final bool useMockData;
 
   @override
   State<StudentsPage> createState() => _StudentsPageState();
@@ -26,13 +29,29 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   @override
+  void didUpdateWidget(covariant StudentsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.useMockData != widget.useMockData) {
+      setState(_loadStudents);
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
   void _loadStudents() {
-    _studentsFuture = StorageService.getStudents();
+    _studentsFuture = widget.useMockData
+        ? PortalDataService.fetchUsers().then(
+            (users) => users
+                .asMap()
+                .entries
+                .map((entry) => PortalDataService.toStudent(entry.value, entry.key))
+                .toList(),
+          )
+        : StorageService.getStudents();
   }
 
   Future<void> _refresh() async {
@@ -126,8 +145,9 @@ class _StudentsPageState extends State<StudentsPage> {
     const maroonColor = Color(0xFF800000);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final toggleBg = isDark ? const Color(0xFF262626) : const Color(0xFFE8E8EC);
+    final selectedColor = isDark ? const Color(0xFFE0B0B0) : maroonColor;
     final inactiveTextColor =
-        isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+        Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Container(
       height: 38,
@@ -145,7 +165,7 @@ class _StudentsPageState extends State<StudentsPage> {
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
                   color: _selectedTabIndex == 0
-                      ? maroonColor
+                      ? selectedColor
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -157,7 +177,7 @@ class _StudentsPageState extends State<StudentsPage> {
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: _selectedTabIndex == 0
-                        ? Colors.white
+                        ? (isDark ? const Color(0xFF171717) : Colors.white)
                         : inactiveTextColor,
                   ),
                 ),
@@ -171,7 +191,7 @@ class _StudentsPageState extends State<StudentsPage> {
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
                   color: _selectedTabIndex == 1
-                      ? maroonColor
+                      ? selectedColor
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -183,7 +203,7 @@ class _StudentsPageState extends State<StudentsPage> {
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: _selectedTabIndex == 1
-                        ? Colors.white
+                        ? (isDark ? const Color(0xFF171717) : Colors.white)
                         : inactiveTextColor,
                   ),
                 ),
@@ -215,19 +235,19 @@ class _StudentsPageState extends State<StudentsPage> {
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 14,
-                color: isDark ? Colors.white : Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               onChanged: (val) => setState(() => _searchQuery = val.trim()),
               decoration: InputDecoration(
                 hintText: 'Search students...',
                 hintStyle: TextStyle(
                   fontFamily: 'Inter',
-                  color: Colors.grey.shade500,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 14,
                 ),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: Colors.grey.shade500,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   size: 20,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -253,7 +273,7 @@ class _StudentsPageState extends State<StudentsPage> {
           child: IconButton(
             icon: Icon(
               Icons.tune,
-              color: isDark ? Colors.white70 : const Color(0xFF1E1E1E),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               size: 20,
             ),
             onPressed: _showFilterSheet,
@@ -277,19 +297,22 @@ class _StudentsPageState extends State<StudentsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const StudentKpiRowWidget(
-          totalStudents: 428,
-          activeStudents: 401,
-          activeTrend: '+4%',
-          avgAttendance: '93%',
+        StudentKpiRowWidget(
+          totalStudents: students.length,
+          activeStudents: students
+              .where((student) => student.status.toLowerCase() == 'active')
+              .length,
+          avgAttendance: students.isEmpty
+              ? '0%'
+              : '${(students.fold<double>(0, (sum, student) => sum + student.attendance) / students.length * 100).round()}%',
         ),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Student List',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1E1E1E),
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 10),
@@ -309,14 +332,14 @@ class _StudentsPageState extends State<StudentsPage> {
                   Icon(
                     Icons.person_search_outlined,
                     size: 40,
-                    color: Colors.grey.shade400,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'No student records found',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -373,10 +396,12 @@ class _StudentsPageState extends State<StudentsPage> {
                       if (snapshot.hasError) {
                         return Container(
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
+                      decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.shade200),
+                            border: Border.all(
+                              color: Theme.of(context).dividerColor,
+                            ),
                           ),
                           child: Text(
                             'Error loading students: ${snapshot.error}',

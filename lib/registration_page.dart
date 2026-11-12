@@ -131,6 +131,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
     IconData? icon,
+    bool isRequired = true,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -139,15 +140,27 @@ class _RegistrationPageState extends State<RegistrationPage> {
         keyboardType: keyboardType,
         validator: validator,
         decoration: InputDecoration(
-          labelText: label,
+          label: _fieldLabel(label, isRequired),
           hintText: hint,
           prefixIcon: icon == null ? null : Icon(icon),
-          filled: true,
-          fillColor: Colors.white,
         ),
       ),
     );
   }
+
+  Widget _fieldLabel(String label, [bool isRequired = true]) => RichText(
+    text: TextSpan(
+      style: Theme.of(context).textTheme.bodyMedium,
+      children: [
+        TextSpan(text: label),
+        if (isRequired)
+          const TextSpan(
+            text: ' *',
+            style: TextStyle(color: Color(0xFFD32F2F)),
+          ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -159,25 +172,21 @@ class _RegistrationPageState extends State<RegistrationPage> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
-            const Icon(
-              Icons.person_add_alt_1,
-              size: 52,
-              color: Color(0xFF800000),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Register a Student',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
             Text(
-              'Enter the student information below.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade700),
+              widget.student == null ? 'Student details' : 'Edit student details',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            Text(
+              'Fields marked with * are required. Contact number and address are optional.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 24),
 
@@ -216,8 +225,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
             DropdownButtonFormField<String>(
               initialValue: _program,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Program',
+              validator: (value) => value == null ? 'Select a program' : null,
+              decoration: InputDecoration(
+                label: _fieldLabel('Program'),
                 prefixIcon: Icon(Icons.school_outlined),
               ),
               items: _programs
@@ -232,8 +242,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
             DropdownButtonFormField<String>(
               initialValue: _yearLevel,
-              decoration: const InputDecoration(
-                labelText: 'Year Level',
+              validator: (value) => value == null ? 'Select a year level' : null,
+              decoration: InputDecoration(
+                label: _fieldLabel('Year level'),
                 prefixIcon: Icon(Icons.calendar_month_outlined),
               ),
               items: _yearLevels
@@ -250,11 +261,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
               _contactController,
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
+              isRequired: false,
             ),
             _textField(
               'Address (Optional)',
               _addressController,
               icon: Icons.home_outlined,
+              isRequired: false,
             ),
 
             const SizedBox(height: 8),

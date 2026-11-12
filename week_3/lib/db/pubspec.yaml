@@ -1,0 +1,33 @@
+name: all_lab_tablac_8
+description: "A new Flutter project."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  shared_preferences: ^2.2.3
+  path_provider: ^2.1.3
+  connectivity_plus: ^7.3.2
+  geolocator: ^14.0.1
+  image_picker: ^1.2.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/img/lpu-logo.png
+
+  fonts:
+    - family: ArcadeClassic
+      fonts:
+        - asset: assets/fonts/ARCADECLASSIC.TTF

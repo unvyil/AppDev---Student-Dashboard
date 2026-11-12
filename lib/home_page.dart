@@ -10,6 +10,7 @@ import 'about_lpu_page.dart';
 import 'faculty_page.dart';
 import 'registration_page.dart';
 import 'services/app_preferences.dart';
+import 'services/portal_data_service.dart';
 import 'services/storage_service.dart';
 import 'settings_page.dart';
 import 'students_page.dart';
@@ -65,25 +66,6 @@ class _HomePageState extends State<HomePage> {
     setState(() => _selectedIndex = 3);
   }
 
-  Future<String> _notificationStatus() async {
-    final network = await Connectivity().checkConnectivity();
-    if (widget.preferences.useMockData) {
-      final networkName = network.map((result) => result.name).join(', ');
-      return 'Network: ${networkName.isEmpty ? 'unknown' : networkName}\n'
-          'Student API: mock data enabled';
-    }
-    try {
-      final response = await http
-          .get(Uri.parse('https://jsonplaceholder.typicode.com/users'))
-          .timeout(const Duration(seconds: 10));
-      final networkName = network.map((result) => result.name).join(', ');
-      return 'Network: ${networkName.isEmpty ? 'unknown' : networkName}\n'
-          'Student API: HTTP ${response.statusCode}';
-    } catch (e) {
-      return 'Network: active\nStudent API: Local cache active';
-    }
-  }
-
   void _showNotifications() {
     setState(() => _hasUnreadNotifications = false);
     showModalBottomSheet<void>(
@@ -97,12 +79,12 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'System alerts',
+                'Recent notifications',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              FutureBuilder<String>(
-                future: _notificationStatus(),
+              FutureBuilder<List<RecentActivity>>(
+                future: StorageService.getRecentActivity(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const ListTile(
@@ -111,32 +93,49 @@ class _HomePageState extends State<HomePage> {
                         height: 22,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      title: Text('Checking system status'),
+                      title: Text('Loading notifications'),
                     );
                   }
                   if (snapshot.hasError) {
                     return ListTile(
                       leading: const Icon(Icons.warning_amber_outlined),
-                      title: const Text('Could not load current alerts'),
+                      title: const Text('Could not load notifications'),
                       subtitle: Text('${snapshot.error}'),
                     );
                   }
-                  return ListTile(
-                    leading: const Icon(Icons.check_circle_outline),
-                    title: const Text('Latest device check'),
-                    subtitle: Text(snapshot.data ?? 'Status OK'),
+                  final activities = (snapshot.data ?? []).take(4).toList();
+                  if (activities.isEmpty) {
+                    return const ListTile(
+                      leading: Icon(Icons.notifications_none),
+                      title: Text('No recent notifications'),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final activity in activities)
+                        ListTile(
+                          leading: const Icon(Icons.notifications_none),
+                          title: Text(activity.title),
+                          subtitle: Text(activity.detail),
+                          trailing: Text(_formatActivityTime(activity.timestamp)),
+                        ),
+                    ],
                   );
                 },
-              ),
-              const ListTile(
-                leading: Icon(Icons.info_outline),
-                title: Text('No other unread alerts'),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _formatActivityTime(DateTime time) {
+    final elapsed = DateTime.now().difference(time);
+    if (elapsed.inMinutes < 1) return 'Now';
+    if (elapsed.inHours < 1) return '${elapsed.inMinutes}m';
+    if (elapsed.inDays < 1) return '${elapsed.inHours}h';
+    return '${elapsed.inDays}d';
   }
 
   @override
@@ -150,8 +149,8 @@ class _HomePageState extends State<HomePage> {
         onOpenSettings: _openSettings,
         onRegisterStudent: _openRegistration,
       ),
-      const StudentsPage(),
-      const FacultyPage(),
+      StudentsPage(useMockData: widget.preferences.useMockData),
+      FacultyPage(useMockData: widget.preferences.useMockData),
       SettingsPage(
         preferences: widget.preferences,
         onRefreshCache: _refreshDashboard,
@@ -220,7 +219,15 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() => _selectedIndex = index);
+          setState(() {
+            _selectedIndex = index;
+            _hasUnreadNotifications = true;
+          });
+          const sections = ['Home', 'Students', 'Faculty', 'Settings'];
+          StorageService.recordActivity(
+            'Opened ${sections[index]}',
+            'Portal navigation',
+          ).then((_) => _dashboardKey.currentState?._refreshActivity());
         },
         type: BottomNavigationBarType.fixed,
         selectedFontSize: 12,
@@ -279,7 +286,9 @@ class _DashboardContentState extends State<DashboardContent> {
   late Future<String> _apiStatusFuture;
   late Future<String> _wifiStatusFuture;
   late Future<String> _gpsStatusFuture;
-  bool _isWifiConnected = true;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _isWifiConnected = false;
+  bool _hasConnectivityUpdate = false;
   bool _isGpsActive = true;
   late DateTime _clockNow;
   Timer? _clockTimer;
@@ -293,17 +302,22 @@ class _DashboardContentState extends State<DashboardContent> {
     super.initState();
     _lastMockDataSetting = widget.preferences.useMockData;
     widget.preferences.addListener(_onPreferencesChanged);
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      _handleConnectivityChange,
+    );
     _clockNow = DateTime.now();
     _selectedCalendarDate = DateTime(2026, 10, 27);
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _clockNow = DateTime.now());
     });
     _reloadDashboard();
+    _recordDashboardOpen();
   }
 
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _connectivitySubscription?.cancel();
     widget.preferences.removeListener(_onPreferencesChanged);
     super.dispose();
   }
@@ -316,7 +330,15 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   void _reloadDashboard() {
-    _studentsFuture = StorageService.getStudents();
+    _studentsFuture = widget.preferences.useMockData
+        ? PortalDataService.fetchUsers().then(
+            (users) => users
+                .asMap()
+                .entries
+                .map((entry) => PortalDataService.toStudent(entry.value, entry.key))
+                .toList(),
+          )
+        : StorageService.getStudents();
     _activityFuture = StorageService.getRecentActivity();
     _weatherFuture = _fetchWeather();
     _calendarFuture = _fetchCalendar();
@@ -337,9 +359,25 @@ class _DashboardContentState extends State<DashboardContent> {
     );
   }
 
+  Future<void> _recordDashboardOpen() async {
+    await StorageService.recordActivity('Portal session started', 'Home');
+    await StorageService.recordActivity('Dashboard opened', 'Home overview');
+    if (!mounted) return;
+    setState(() => _activityFuture = StorageService.getRecentActivity());
+  }
+
+  void _refreshActivity() {
+    if (!mounted) return;
+    setState(() => _activityFuture = StorageService.getRecentActivity());
+  }
+
   Future<String> _checkApiStatus() async {
     if (widget.preferences.useMockData) return 'Mock data';
     try {
+      final connectivity = await Connectivity().checkConnectivity();
+      if (connectivity.every((result) => result == ConnectivityResult.none)) {
+        return 'Offline (using cached data)';
+      }
       await Future.wait([
         _weatherFuture,
         _calendarFuture,
@@ -361,18 +399,49 @@ class _DashboardContentState extends State<DashboardContent> {
   Future<String> _checkWifiStatus() async {
     try {
       final results = await Connectivity().checkConnectivity();
-      final isWifi = results.contains(ConnectivityResult.wifi) ||
-          results.contains(ConnectivityResult.ethernet) ||
-          results.contains(ConnectivityResult.mobile);
-      if (mounted) {
-        setState(() {
-          _isWifiConnected = isWifi || results.isNotEmpty;
-        });
-      }
+      _handleConnectivityChange(results, announce: false);
       return _isWifiConnected ? 'Connected' : 'Disconnected';
     } catch (_) {
-      if (mounted) setState(() => _isWifiConnected = true);
-      return 'Connected';
+      _handleConnectivityChange(const [ConnectivityResult.none], announce: false);
+      return 'Disconnected';
+    }
+  }
+
+  void _handleConnectivityChange(
+    List<ConnectivityResult> results, {
+    bool announce = true,
+  }) {
+    final isConnected = results.any(
+      (result) => result != ConnectivityResult.none,
+    );
+    final wasInitialized = _hasConnectivityUpdate;
+    final changed = isConnected != _isWifiConnected;
+    _hasConnectivityUpdate = true;
+    if (!changed && wasInitialized) return;
+
+    if (!mounted) {
+      _isWifiConnected = isConnected;
+      return;
+    }
+
+    setState(() {
+      _isWifiConnected = isConnected;
+      _wifiStatusFuture = Future.value(isConnected ? 'Connected' : 'Disconnected');
+      PortalDataService.resetInFlightRequest();
+      _reloadDashboard();
+    });
+
+    if (changed && wasInitialized && announce) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isConnected
+                ? 'Connection restored. Portal data is syncing.'
+                : 'You are offline. Showing locally cached portal data.',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -519,9 +588,9 @@ class _DashboardContentState extends State<DashboardContent> {
   Future<void> _showNetworkStatus() async {
     setState(() => _wifiStatusFuture = _checkWifiStatus());
     await _showStatusDialog(
-      'Wi-Fi Status',
+      'Network Status',
       _wifiStatusFuture,
-      'Connected to LPU-Cavite Campus Wi-Fi network.',
+      'When there is no network, student and faculty data is read from the local cache.',
     );
   }
 
@@ -679,7 +748,7 @@ class _DashboardContentState extends State<DashboardContent> {
     );
   }
 
-  // 3. Quick Actions Grid with dynamic Wi-Fi & GPS sync
+  // 3. Quick Actions Grid with dynamic network & GPS status
   Widget _buildQuickActions() {
     return GridView.count(
       crossAxisCount: 3,
@@ -708,7 +777,7 @@ class _DashboardContentState extends State<DashboardContent> {
           onTap: _showApiStatus,
         ),
         QuickActionButton(
-          label: 'Wi-Fi',
+          label: 'Network',
           icon: Icons.wifi,
           statusDotColor: _isWifiConnected
               ? const Color(0xFF2E7D32)
@@ -736,6 +805,8 @@ class _DashboardContentState extends State<DashboardContent> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = Theme.of(context).cardColor;
     final borderColor = Theme.of(context).dividerColor;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardWidth = screenWidth < 360 ? 144.0 : 154.0;
     final textColor = isDark ? AppTokens.textDark : AppTokens.textLight;
     final secondaryTextColor =
         isDark ? AppTokens.textSecondaryDark : AppTokens.textSecondaryLight;
@@ -747,94 +818,88 @@ class _DashboardContentState extends State<DashboardContent> {
     ];
 
     return SizedBox(
-      height: 108,
-      child: Row(
-        children: [
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: cities.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final city = cities[index];
-                final localTime = _clockNow.toUtc().add(Duration(hours: city.$2));
-                final hour = localTime.hour % 12 == 0 ? 12 : localTime.hour % 12;
-                final minute = localTime.minute.toString().padLeft(2, '0');
-                final period = localTime.hour < 12 ? 'AM' : 'PM';
-                final isDay = localTime.hour >= 6 && localTime.hour < 18;
+      height: 126,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(right: 4),
+        itemCount: cities.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final city = cities[index];
+          final localTime = _clockNow.toUtc().add(Duration(hours: city.$2));
+          final hour = localTime.hour % 12 == 0 ? 12 : localTime.hour % 12;
+          final minute = localTime.minute.toString().padLeft(2, '0');
+          final period = localTime.hour < 12 ? 'AM' : 'PM';
+          final isDay = localTime.hour >= 6 && localTime.hour < 18;
 
-                return Container(
-                  width: 154,
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: borderColor),
-                    boxShadow: [
+          return Container(
+            width: cardWidth,
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor.withValues(alpha: .7)),
+              boxShadow: isDark
+                  ? null
+                  : [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.02),
                         blurRadius: 3,
                         offset: const Offset(0, 1),
                       ),
                     ],
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              city.$1,
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: textColor,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            isDay
-                                ? Icons.wb_sunny_outlined
-                                : Icons.nightlight_round,
-                            color: isDark ? AppTokens.accentLime : maroonColor,
-                            size: 14,
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '$hour:$minute $period',
+            ),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        city.$1,
                         style: TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 17,
                           fontWeight: FontWeight.bold,
+                        fontSize: 12,
                           color: textColor,
                         ),
                       ),
-                      Text(
-                        city.$3,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 9.5,
-                          color: secondaryTextColor,
-                        ),
-                      ),
-                    ],
+                    ),
+                    Icon(
+                      isDay ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+                      color: isDark ? AppTokens.maroonOnDark : maroonColor,
+                      size: 14,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  '$hour:$minute $period',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                  fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
-                );
-              },
+                ),
+                const Spacer(),
+                Text(
+                  city.$3,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 9,
+                    height: 1.15,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right, color: secondaryTextColor, size: 20),
-        ],
+          );
+        },
       ),
     );
   }
@@ -853,6 +918,14 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   // 6. Recent Activity Feed
+  String _formatActivityTime(DateTime time) {
+    final elapsed = DateTime.now().difference(time);
+    if (elapsed.inMinutes < 1) return 'Now';
+    if (elapsed.inHours < 1) return '${elapsed.inMinutes}m';
+    if (elapsed.inDays < 1) return '${elapsed.inHours}h';
+    return '${elapsed.inDays}d';
+  }
+
   Widget _buildRecentActivityFeed() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = Theme.of(context).cardColor;
@@ -864,57 +937,52 @@ class _DashboardContentState extends State<DashboardContent> {
     return FutureBuilder<List<RecentActivity>>(
       future: _activityFuture,
       builder: (context, snapshot) {
-        final activities = snapshot.data ?? [];
-        final hasActivities = activities.isNotEmpty;
-        final title =
-            hasActivities ? activities.first.title : 'Logged in to portal';
-
-        return Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
+        final activities = (snapshot.data ?? []).take(4).toList();
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LinearProgressIndicator();
+        }
+        if (activities.isEmpty) {
+          return Text('No activity yet', style: TextStyle(color: secondaryTextColor));
+        }
+        return Column(
+          children: [
+            for (final activity in activities)
               Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF2E7D32),
-                  shape: BoxShape.circle,
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.history, size: 18, color: secondaryTextColor),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(activity.title, style: TextStyle(
+                            fontFamily: 'Inter', fontSize: 12,
+                            fontWeight: FontWeight.w600, color: textColor,
+                          )),
+                          if (activity.detail.isNotEmpty)
+                            Text(activity.detail, style: TextStyle(
+                              fontFamily: 'Inter', fontSize: 11,
+                              color: secondaryTextColor,
+                            )),
+                        ],
+                      ),
+                    ),
+                    Text(_formatActivityTime(activity.timestamp), style: TextStyle(
+                      fontFamily: 'Inter', fontSize: 10,
+                      color: secondaryTextColor,
+                    )),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: textColor,
-                  ),
-                ),
-              ),
-              Text(
-                '5m ago',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  color: secondaryTextColor,
-                ),
-              ),
-            ],
-          ),
+          ],
         );
       },
     );
@@ -932,56 +1000,56 @@ class _DashboardContentState extends State<DashboardContent> {
           children: [
             _buildWeatherHeader(),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Overview',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E1E1E),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 10),
             _buildOverviewCard(),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Quick Actions',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E1E1E),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 10),
             _buildQuickActions(),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'World Clock',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E1E1E),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 10),
             _buildWorldClock(),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Academic Calendar',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E1E1E),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 10),
             _buildCalendarWidget(),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Recent Activity',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E1E1E),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 10),

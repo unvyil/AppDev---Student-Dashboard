@@ -19,9 +19,8 @@ class AppTokens {
   static const Color textSecondaryDark = Color(0xFFA1A1AA);
   static const Color borderDark = Color(0xFF333333);
 
-  // High-Energy Accents
-  static const Color accentLime = Color(0xFFDBFF49);
-  static const Color accentMagenta = Color(0xFFFF006E);
+  // A lighter LPU maroon tint keeps brand accents readable on dark surfaces.
+  static const Color maroonOnDark = Color(0xFFE0B0B0);
 
   // CCS Program Track Tokens
   static const Color trackBsitWm = Color(0xFF7B2CBF); // Royal Purple
@@ -54,11 +53,13 @@ class AppTokens {
       primaryColor: maroonPrimary,
       cardColor: card,
       dividerColor: borderColor,
+      splashColor: maroonPrimary.withValues(alpha: 0.08),
+      highlightColor: maroonPrimary.withValues(alpha: 0.04),
       colorScheme: ColorScheme.fromSeed(
         seedColor: maroonPrimary,
         brightness: brightness,
         primary: maroonPrimary,
-        secondary: isDark ? accentLime : maroonPrimary,
+        secondary: isDark ? maroonOnDark : maroonPrimary,
         surface: card,
         onSurface: textColor,
         onPrimary: Colors.white,
@@ -85,7 +86,7 @@ class AppTokens {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: card,
-        selectedItemColor: isDark ? accentLime : maroonPrimary,
+        selectedItemColor: isDark ? maroonOnDark : maroonPrimary,
         unselectedItemColor: secondaryTextColor,
         selectedLabelStyle: const TextStyle(
           fontFamily: 'Inter',
@@ -116,9 +117,9 @@ class AppTokens {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: isDark ? accentLime : maroonPrimary,
+          foregroundColor: isDark ? maroonOnDark : maroonPrimary,
           side: BorderSide(
-            color: isDark ? accentLime : maroonPrimary,
+            color: isDark ? maroonOnDark : maroonPrimary,
             width: 1.2,
           ),
           textStyle: const TextStyle(

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
-import 'about_lpu_page.dart';
 import 'auth_page.dart';
 import 'registration_page.dart';
 import 'services/app_preferences.dart';
@@ -119,6 +118,10 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _refreshing = true);
     try {
       await widget.onRefreshCache();
+      await StorageService.recordActivity(
+        'Dashboard data refreshed',
+        'Manual refresh',
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dashboard data refreshed.')),
@@ -137,6 +140,28 @@ class _SettingsPageState extends State<SettingsPage> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final results = await Connectivity().checkConnectivity();
+      final hasNetwork = results.any(
+        (result) => result != ConnectivityResult.none,
+      );
+      if (!hasNetwork) {
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Network diagnostics'),
+            content: const Text(
+              'No network connection is available. Student and faculty data will use the last locally cached JSONPlaceholder records.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Done'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       final response = await http
           .get(Uri.parse('https://jsonplaceholder.typicode.com/users'))
           .timeout(const Duration(seconds: 10));
@@ -240,6 +265,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _changeDarkMode(bool enabled) async {
     try {
       await widget.preferences.setDarkMode(enabled);
+      await StorageService.recordActivity(
+        enabled ? 'Dark mode enabled' : 'Dark mode disabled',
+        'Display settings',
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -251,55 +280,16 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _changeMockData(bool enabled) async {
     try {
       await widget.preferences.setUseMockData(enabled);
+      await StorageService.recordActivity(
+        enabled ? 'Mock data enabled' : 'Mock data disabled',
+        enabled ? 'Using JSONPlaceholder directory data' : 'Using saved portal data',
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not update data mode: $error')),
       );
     }
-  }
-
-  void _showPrivacyPolicy() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Privacy Policy'),
-        content: const Text(
-          'This student app stores registration records and preferences '
-          'locally on this device. Weather, holiday, and directory requests '
-          'are sent to their respective public APIs. This summary is not an '
-          'official LPU privacy notice; refer to the University’s published '
-          'privacy policy for official terms.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSystemInfo() {
-    final size = MediaQuery.sizeOf(context);
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('System information'),
-        content: Text(
-          'Platform: ${Theme.of(context).platform.name}\n'
-          'Screen: ${size.width.round()} × ${size.height.round()} logical pixels\n'
-          'Theme: ${widget.preferences.themeMode.name}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -310,22 +300,9 @@ class _SettingsPageState extends State<SettingsPage> {
         final content = ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Settings',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                if (!widget.showAppBar)
-                  IconButton(
-                    tooltip: 'About LPU',
-                    icon: const Icon(Icons.info_outline),
-                    color: AppTokens.maroonPrimary,
-                    onPressed: () => showAboutLpuModal(context),
-                  ),
-              ],
+            const Text(
+              'Settings',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             FutureBuilder<List<Student>>(
@@ -389,19 +366,19 @@ class _SettingsPageState extends State<SettingsPage> {
                             children: [
                               Text(
                                 name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
                               Text(
                                 student?.id ?? '2023-1-00123',
-                                style: TextStyle(color: Colors.grey.shade600),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                               ),
                               Text(
                                 student?.program ?? 'BSIT-WM',
-                                style: const TextStyle(
-                                  color: Color(0xFF800000),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.secondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -410,7 +387,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Colors.grey.shade600,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   fontSize: 12,
                                 ),
                               ),
@@ -528,40 +505,10 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 18),
-            _sectionTitle('About & Legal'),
+            _sectionTitle('Account'),
             Card(
               child: Column(
                 children: [
-                  const ListTile(
-                    leading: Icon(Icons.info_outline),
-                    title: Text('LPU Student App'),
-                    subtitle: Text('Version 0.1.0+1'),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.school_outlined,
-                        color: AppTokens.maroonPrimary),
-                    title: const Text('About LPU-Cavite'),
-                    subtitle:
-                        const Text('Vision, Mission, and Core Values (4L)'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showAboutLpuModal(context),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.privacy_tip_outlined),
-                    title: const Text('LPU Privacy Policy'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _showPrivacyPolicy,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.devices_outlined),
-                    title: const Text('System Info'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _showSystemInfo,
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text(
@@ -589,16 +536,7 @@ class _SettingsPageState extends State<SettingsPage> {
         );
         if (!widget.showAppBar) return content;
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Settings'),
-            actions: [
-              IconButton(
-                tooltip: 'About LPU',
-                icon: const Icon(Icons.info_outline),
-                onPressed: () => showAboutLpuModal(context),
-              ),
-            ],
-          ),
+          appBar: AppBar(title: const Text('Settings')),
           body: content,
         );
       },

@@ -29,14 +29,16 @@ class _FilesPageState extends State<FilesPage> {
     setState(() => _exporting = true);
 
     try {
-      await FileService.exportStudents();
+      final file = await FileService.exportStudents();
 
       if (!mounted) return;
 
       setState(_loadFile);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Student file exported successfully.')),
+        SnackBar(
+          content: Text('Saved student_info.txt in internal storage:\n${file.path}'),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -60,7 +62,7 @@ class _FilesPageState extends State<FilesPage> {
         const SizedBox(height: 6),
         Text(
           'Export and view your saved student information.',
-          style: TextStyle(color: Colors.grey.shade700),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 20),
 

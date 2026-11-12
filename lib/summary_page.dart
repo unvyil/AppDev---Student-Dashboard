@@ -9,17 +9,18 @@ class SummaryPage extends StatelessWidget {
 
   const SummaryPage({super.key, required this.student, this.isUpdate = false});
 
-  Widget _detail(String label, String value) {
+  Widget _detail(BuildContext context, String label, String value) {
+    final colors = Theme.of(context).colorScheme;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(
         label,
-        style: const TextStyle(color: Colors.grey, fontSize: 13),
+        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
       ),
       subtitle: Text(
         value.isEmpty ? 'Not provided' : value,
-        style: const TextStyle(
-          color: Colors.black87,
+        style: TextStyle(
+          color: colors.onSurface,
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
@@ -63,10 +64,14 @@ class SummaryPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 42,
-            backgroundColor: Color(0xFFEFE1E1),
-            child: Icon(Icons.person, size: 48, color: Color(0xFF800000)),
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Icon(
+              Icons.person,
+              size: 48,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -80,7 +85,7 @@ class SummaryPage extends StatelessWidget {
                 ? 'Your student profile has been updated on this device.'
                 : 'The student information has been saved on this device.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade700),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           Card(
@@ -94,13 +99,13 @@ class SummaryPage extends StatelessWidget {
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
                   ),
                   const Divider(height: 24),
-                  _detail('Student Name', student.name),
-                  _detail('Student ID', student.id),
-                  _detail('Email', student.email),
-                  _detail('Program', student.program),
-                  _detail('Year Level', student.yearLevel),
-                  _detail('Contact Number', student.contact),
-                  _detail('Address', student.address),
+                  _detail(context, 'Student Name', student.name),
+                  _detail(context, 'Student ID', student.id),
+                  _detail(context, 'Email', student.email),
+                  _detail(context, 'Program', student.program),
+                  _detail(context, 'Year Level', student.yearLevel),
+                  _detail(context, 'Contact Number', student.contact),
+                  _detail(context, 'Address', student.address),
                 ],
               ),
             ),

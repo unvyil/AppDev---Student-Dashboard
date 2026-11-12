@@ -25,6 +25,8 @@ class StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final bool isActive =
         student.status.toLowerCase() != 'inactive' &&
         student.status.toLowerCase() != 'warning';
@@ -33,10 +35,10 @@ class StudentCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
@@ -79,10 +81,10 @@ class StudentCard extends StatelessWidget {
                             student.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E1E1E),
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -90,7 +92,7 @@ class StudentCard extends StatelessWidget {
                             '${student.id} • ${student.program}',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey.shade600,
+                              color: theme.colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -100,7 +102,7 @@ class StudentCard extends StatelessWidget {
                               Icon(
                                 Icons.email_outlined,
                                 size: 12,
-                                color: Colors.grey.shade500,
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 4),
                               Expanded(
@@ -110,7 +112,7 @@ class StudentCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.grey.shade700,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ),
@@ -123,14 +125,14 @@ class StudentCard extends StatelessWidget {
                                 Icon(
                                   Icons.phone_outlined,
                                   size: 12,
-                                  color: Colors.grey.shade500,
+                                color: theme.colorScheme.onSurfaceVariant,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   student.contact,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.grey.shade700,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -146,9 +148,13 @@ class StudentCard extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: isActive
-                            ? const Color(0xFFE8F5E9)
-                            : const Color(0xFFFFEBEE),
+                        color: isDark
+                            ? (isActive
+                                ? const Color(0xFF24382A)
+                                : const Color(0xFF40272A))
+                            : (isActive
+                                ? const Color(0xFFE8F5E9)
+                                : const Color(0xFFFFEBEE)),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -157,8 +163,8 @@ class StudentCard extends StatelessWidget {
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: isActive
-                              ? const Color(0xFF2E7D32)
-                              : const Color(0xFFC62828),
+                              ? (isDark ? const Color(0xFFE0B0B0) : const Color(0xFF2E7D32))
+                              : (isDark ? const Color(0xFFD88A8A) : const Color(0xFFC62828)),
                         ),
                       ),
                     ),
@@ -171,13 +177,13 @@ class StudentCard extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: student.attendance.clamp(0.0, 1.0),
+                          value: student.attendance.clamp(0.0, 1.0).toDouble(),
                           minHeight: 5,
-                          backgroundColor: Colors.grey.shade200,
+                          backgroundColor: theme.dividerColor,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             isActive
-                                ? const Color(0xFF2E7D32)
-                                : const Color(0xFFC62828),
+                                ? (isDark ? const Color(0xFFE0B0B0) : const Color(0xFF2E7D32))
+                                : (isDark ? const Color(0xFFD88A8A) : const Color(0xFFC62828)),
                           ),
                         ),
                       ),
@@ -188,7 +194,7 @@ class StudentCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
