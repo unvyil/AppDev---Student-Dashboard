@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../services/public_holiday_service.dart';
+
 class SwipeableWeekCalendarWidget extends StatefulWidget {
   const SwipeableWeekCalendarWidget({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
     this.eventText = 'No upcoming events.',
+    this.holidays = const [],
+    this.holidaysOffline = false,
   });
 
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
   final String eventText;
+  final List<PublicHoliday> holidays;
+  final bool holidaysOffline;
 
   static const Color maroonColor = Color(0xFF800000);
 
@@ -57,8 +63,11 @@ class _SwipeableWeekCalendarWidgetState
   }
 
   DateTime _findMonday(DateTime date) {
-    return DateTime(date.year, date.month, date.day)
-        .subtract(Duration(days: date.weekday - 1));
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: date.weekday - 1));
   }
 
   DateTime _getMondayForPage(int page) {
@@ -79,7 +88,7 @@ class _SwipeableWeekCalendarWidgetState
       'September',
       'October',
       'November',
-      'December'
+      'December',
     ];
     return months[month - 1];
   }
@@ -116,7 +125,8 @@ class _SwipeableWeekCalendarWidgetState
     if (picked != null) {
       widget.onDateSelected(picked);
       final targetMonday = _findMonday(picked);
-      final offset = (targetMonday.difference(_referenceMonday).inDays / 7).round();
+      final offset = (targetMonday.difference(_referenceMonday).inDays / 7)
+          .round();
       final targetPage = _initialPage + offset;
       if (_pageController.hasClients) {
         _pageController.animateToPage(
@@ -141,15 +151,17 @@ class _SwipeableWeekCalendarWidgetState
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: theme.dividerColor),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -192,18 +204,27 @@ class _SwipeableWeekCalendarWidgetState
               controller: _pageController,
               onPageChanged: (page) {
                 final monday = _getMondayForPage(page);
-                final thursday = monday.add(const Duration(days: 3));
+                final nextSelectedDate = monday.add(
+                  Duration(days: widget.selectedDate.weekday - 1),
+                );
                 setState(() {
-                  _currentDisplayedMonth = thursday;
+                  _currentDisplayedMonth = nextSelectedDate;
                 });
+                widget.onDateSelected(nextSelectedDate);
               },
               itemBuilder: (context, page) {
                 final monday = _getMondayForPage(page);
-                final days = List.generate(7, (i) => monday.add(Duration(days: i)));
+                final days = List.generate(
+                  7,
+                  (i) => monday.add(Duration(days: i)),
+                );
 
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: days.map((day) {
+                    final hasHoliday = widget.holidays.any(
+                      (holiday) => DateUtils.isSameDay(holiday.date, day),
+                    );
                     final isSelected =
                         day.year == widget.selectedDate.year &&
                         day.month == widget.selectedDate.month &&
@@ -232,8 +253,9 @@ class _SwipeableWeekCalendarWidgetState
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? (isDark
-                                      ? const Color(0xFFE0B0B0)
-                                      : SwipeableWeekCalendarWidget.maroonColor)
+                                        ? const Color(0xFFE0B0B0)
+                                        : SwipeableWeekCalendarWidget
+                                              .maroonColor)
                                   : Colors.transparent,
                               shape: BoxShape.circle,
                             ),
@@ -244,9 +266,25 @@ class _SwipeableWeekCalendarWidgetState
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected
-                                    ? (isDark ? const Color(0xFF171717) : Colors.white)
+                                    ? (isDark
+                                          ? const Color(0xFF171717)
+                                          : Colors.white)
                                     : theme.colorScheme.onSurface,
                               ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: hasHoliday
+                                  ? (isSelected
+                                        ? theme.colorScheme.onPrimary
+                                        : SwipeableWeekCalendarWidget
+                                              .maroonColor)
+                                  : Colors.transparent,
+                              shape: BoxShape.circle,
                             ),
                           ),
                         ],
@@ -260,15 +298,68 @@ class _SwipeableWeekCalendarWidgetState
           const SizedBox(height: 10),
           const Divider(height: 1),
           const SizedBox(height: 10),
-          Text(
-            widget.eventText,
-            style: TextStyle(
-              fontSize: 11,
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          _buildSelectedDateEvents(theme),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedDateEvents(ThemeData theme) {
+    final selectedHolidays = widget.holidays
+        .where(
+          (holiday) => DateUtils.isSameDay(holiday.date, widget.selectedDate),
+        )
+        .toList();
+    if (selectedHolidays.isNotEmpty) {
+      return Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        children: selectedHolidays
+            .map(
+              (holiday) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9EAEA),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.celebration_outlined,
+                      size: 14,
+                      color: SwipeableWeekCalendarWidget.maroonColor,
+                    ),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        holiday.name,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: SwipeableWeekCalendarWidget.maroonColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+            .toList(),
+      );
+    }
+
+    final message = widget.holidaysOffline
+        ? widget.holidays.isEmpty
+              ? 'Holiday dates are unavailable offline. Reconnect to sync.'
+              : 'Offline · Showing saved Nager.Date holidays.'
+        : widget.eventText;
+    return Text(
+      message,
+      style: TextStyle(
+        fontSize: 11,
+        color: theme.colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w500,
       ),
     );
   }

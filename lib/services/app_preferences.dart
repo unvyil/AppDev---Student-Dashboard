@@ -76,7 +76,11 @@ class AppPreferences extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setRememberMe(bool enabled, String userId, String password) async {
+  Future<void> setRememberMe(
+    bool enabled,
+    String userId,
+    String password,
+  ) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_rememberMeKey, enabled);
     if (enabled && userId.trim().isNotEmpty) {
@@ -95,10 +99,16 @@ class AppPreferences extends ChangeNotifier {
   }
 
   Future<void> setUseMockData(bool enabled) async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_mockDataKey, enabled);
     _useMockData = enabled;
     notifyListeners();
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(_mockDataKey, enabled);
+    } catch (error) {
+      // Keep the selected source active for this session if local persistence
+      // is temporarily unavailable. The UI remains usable and can retry later.
+      debugPrint('Could not persist mock data preference: $error');
+    }
   }
 
   Future<void> clearLocalStorage() async {

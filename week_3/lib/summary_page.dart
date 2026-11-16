@@ -30,7 +30,8 @@ class SummaryPage extends StatelessWidget {
 
   Future<void> _export(BuildContext context) async {
     try {
-      final file = await FileService.exportStudents();
+      await FileService.exportStudents();
+      final exportLocation = await FileService.getFilePath();
 
       if (!context.mounted) return;
 
@@ -40,7 +41,7 @@ class SummaryPage extends StatelessWidget {
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 42),
           title: const Text('Export Successful'),
           content: SelectableText(
-            'Student information was exported to:\n\n${file.path}',
+            'Student information was exported to:\n\n$exportLocation',
           ),
           actions: [
             TextButton(
@@ -66,7 +67,9 @@ class SummaryPage extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 42,
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            backgroundColor: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest,
             child: Icon(
               Icons.person,
               size: 48,
@@ -85,7 +88,9 @@ class SummaryPage extends StatelessWidget {
                 ? 'Your student profile has been updated on this device.'
                 : 'The student information has been saved on this device.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 24),
           Card(
@@ -121,9 +126,10 @@ class SummaryPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back to Registration'),
+            onPressed: () =>
+                Navigator.popUntil(context, (route) => route.isFirst),
+            icon: const Icon(Icons.home_outlined),
+            label: const Text('Back to Dashboard'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),

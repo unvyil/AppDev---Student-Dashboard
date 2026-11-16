@@ -7,12 +7,10 @@ import 'storage_service.dart';
 class FileService {
   static const _fileName = 'student_info.txt';
 
-  /// App-private internal storage. This file is stored on the device and is
-  /// retained between launches, but is not placed in Downloads or shared
-  /// public storage.
+  /// Required app Documents copy, accessible through Android Studio's
+  /// Device File Explorer.
   static Future<Directory> _internalExportDirectory() async {
-    final support = await getApplicationSupportDirectory();
-    final directory = Directory('${support.path}/exports');
+    final directory = await getApplicationDocumentsDirectory();
     await directory.create(recursive: true);
     return directory;
   }
@@ -33,26 +31,44 @@ class FileService {
     return file;
   }
 
-  static String _reportContents() {
+  static Future<String> _reportContents() async {
     final now = DateTime.now();
     final timestamp =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
 
-    return 'LPU STUDENT INFORMATION REPORT\n'
+    final students = await StorageService.getStudents();
+    final records = students.isEmpty
+        ? 'No student records.'
+        : students
+              .map(
+                (student) => [
+                  'Name: ${student.name}',
+                  'ID: ${student.id}',
+                  'Program: ${student.program}',
+                  'Year: ${student.yearLevel}',
+                  'Email: ${student.email}',
+                  if (student.contact.isNotEmpty) 'Contact: ${student.contact}',
+                  if (student.address.isNotEmpty) 'Address: ${student.address}',
+                  'Status: ${student.status}',
+                  'Attendance: ${(student.attendance * 100).round()}%',
+                ].join('\n'),
+              )
+              .join('\n\n');
+
+    return 'STUDENT INFORMATION\n'
         'Generated: $timestamp\n'
-        'Student Name: Novy Chariz Tablac\n'
-        'Student ID: 2024-2-02204\n'
-        'Program: BSIT-WM (3rd Year)\n'
-        'Email: 2024-2-02204@lpunetwork.edu.ph\n';
+        'Student count: ${students.length}\n\n'
+        '$records\n';
   }
 
   static Future<File> exportStudents() async {
-    final file = await _writeAndVerify(_reportContents());
+    final content = await _reportContents();
+    final file = await _writeAndVerify(content);
     try {
       await StorageService.recordActivity(
         'Student records exported',
-        'Saved to internal storage: ${file.path}',
+        'Saved to app-private Documents storage',
       );
     } catch (_) {
       // A history-write failure does not invalidate the saved file.

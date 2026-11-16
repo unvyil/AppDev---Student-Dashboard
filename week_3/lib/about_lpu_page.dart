@@ -14,9 +14,7 @@ void showAboutLpuModal(BuildContext context) {
     builder: (context) => const SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: SingleChildScrollView(
-          child: AboutLpuContent(),
-        ),
+        child: SingleChildScrollView(child: AboutLpuContent()),
       ),
     ),
   );
@@ -88,8 +86,9 @@ class AboutLpuContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppTokens.textDark : AppTokens.textLight;
-    final secondaryTextColor =
-        isDark ? AppTokens.textSecondaryDark : AppTokens.textSecondaryLight;
+    final secondaryTextColor = isDark
+        ? AppTokens.textSecondaryDark
+        : AppTokens.textSecondaryLight;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -104,7 +103,7 @@ class AboutLpuContent extends StatelessWidget {
               width: 42,
               height: 42,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (context, error, stackTrace) => const Icon(
                 Icons.school,
                 color: AppTokens.maroonPrimary,
                 size: 28,
@@ -144,8 +143,7 @@ class AboutLpuContent extends StatelessWidget {
         _buildSection(
           context: context,
           title: 'Vision',
-          description:
-              'To be a recognized and accredited quality institution by 2030, distinguished by our commitment to quality systems and continuous improvement, dedicated to innovation, excellence and integrity in the service of God and country.',
+          description: 'To be a recognized and accredited quality institution by 2030, distinguished by our commitment to quality systems and continuous improvement, dedicated to innovation, excellence and integrity in the service of God and country.',
         ),
         const Divider(height: 1),
         _buildSection(

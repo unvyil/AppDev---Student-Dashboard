@@ -4,12 +4,14 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 
 import 'about_lpu_page.dart';
 import 'faculty_page.dart';
 import 'registration_page.dart';
 import 'services/app_preferences.dart';
+import 'services/public_holiday_service.dart';
 import 'services/portal_data_service.dart';
 import 'services/storage_service.dart';
 import 'settings_page.dart';
@@ -19,6 +21,8 @@ import 'widgets/overview_card_widget.dart';
 import 'widgets/quick_action_button.dart';
 import 'widgets/swipeable_week_calendar_widget.dart';
 import 'widgets/weather_header_card_widget.dart';
+
+typedef WeatherData = Map<String, dynamic>;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.preferences});
@@ -117,7 +121,9 @@ class _HomePageState extends State<HomePage> {
                           leading: const Icon(Icons.notifications_none),
                           title: Text(activity.title),
                           subtitle: Text(activity.detail),
-                          trailing: Text(_formatActivityTime(activity.timestamp)),
+                          trailing: Text(
+                            _formatActivityTime(activity.timestamp),
+                          ),
                         ),
                     ],
                   );
@@ -149,9 +155,16 @@ class _HomePageState extends State<HomePage> {
         onOpenSettings: _openSettings,
         onRegisterStudent: _openRegistration,
       ),
-      StudentsPage(useMockData: widget.preferences.useMockData),
-      FacultyPage(useMockData: widget.preferences.useMockData),
+      StudentsPage(
+        key: const ValueKey<String>('portal-students-page'),
+        useMockData: widget.preferences.useMockData,
+      ),
+      FacultyPage(
+        key: const ValueKey<String>('portal-faculty-page'),
+        useMockData: widget.preferences.useMockData,
+      ),
       SettingsPage(
+        key: const ValueKey<String>('portal-settings'),
         preferences: widget.preferences,
         onRefreshCache: _refreshDashboard,
         showAppBar: false,
@@ -168,11 +181,8 @@ class _HomePageState extends State<HomePage> {
           child: Image.asset(
             'assets/img/lpu-logo.png',
             fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => const Icon(
-              Icons.school,
-              size: 26,
-              color: Colors.white,
-            ),
+            errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.school, size: 26, color: Colors.white),
           ),
         ),
         title: const Text(
@@ -194,7 +204,11 @@ class _HomePageState extends State<HomePage> {
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_outlined, size: 24, color: Colors.white),
+                const Icon(
+                  Icons.notifications_outlined,
+                  size: 24,
+                  color: Colors.white,
+                ),
                 if (_hasUnreadNotifications)
                   Positioned(
                     right: 0,
@@ -281,8 +295,9 @@ class _DashboardContentState extends State<DashboardContent> {
   static const double _caviteLongitude = 120.881;
 
   late Future<List<Student>> _studentsFuture;
-  late Future<Map<String, dynamic>> _weatherFuture;
-  late Future<List<Map<String, dynamic>>> _calendarFuture;
+  late Future<Student?> _profileStudentFuture;
+  late Future<WeatherData> _weatherFuture;
+  late Future<HolidayCalendarData> _calendarFuture;
   late Future<String> _apiStatusFuture;
   late Future<String> _wifiStatusFuture;
   late Future<String> _gpsStatusFuture;
@@ -290,27 +305,30 @@ class _DashboardContentState extends State<DashboardContent> {
   bool _isWifiConnected = false;
   bool _hasConnectivityUpdate = false;
   bool _isGpsActive = true;
+  String _gpsStatusLabel = 'Checking';
+  String _weatherLocationLabel = 'LPU Cavite';
   late DateTime _clockNow;
   Timer? _clockTimer;
   int _studentCount = 0;
   late Future<List<RecentActivity>> _activityFuture;
   late DateTime _selectedCalendarDate;
-  late bool _lastMockDataSetting;
 
   @override
   void initState() {
     super.initState();
-    _lastMockDataSetting = widget.preferences.useMockData;
-    widget.preferences.addListener(_onPreferencesChanged);
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
       _handleConnectivityChange,
     );
     _clockNow = DateTime.now();
-    _selectedCalendarDate = DateTime(2026, 10, 27);
+    _selectedCalendarDate = DateTime.now();
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _clockNow = DateTime.now());
     });
     _reloadDashboard();
+    _refreshLocationAndWeather(
+      announce: false,
+      openSettingsIfDeniedForever: false,
+    );
     _recordDashboardOpen();
   }
 
@@ -318,27 +336,12 @@ class _DashboardContentState extends State<DashboardContent> {
   void dispose() {
     _clockTimer?.cancel();
     _connectivitySubscription?.cancel();
-    widget.preferences.removeListener(_onPreferencesChanged);
     super.dispose();
   }
 
-  void _onPreferencesChanged() {
-    final useMockData = widget.preferences.useMockData;
-    if (useMockData == _lastMockDataSetting) return;
-    _lastMockDataSetting = useMockData;
-    if (mounted) setState(_reloadDashboard);
-  }
-
   void _reloadDashboard() {
-    _studentsFuture = widget.preferences.useMockData
-        ? PortalDataService.fetchUsers().then(
-            (users) => users
-                .asMap()
-                .entries
-                .map((entry) => PortalDataService.toStudent(entry.value, entry.key))
-                .toList(),
-          )
-        : StorageService.getStudents();
+    _studentsFuture = StorageService.getStudents();
+    _profileStudentFuture = StorageService.getProfile();
     _activityFuture = StorageService.getRecentActivity();
     _weatherFuture = _fetchWeather();
     _calendarFuture = _fetchCalendar();
@@ -372,7 +375,6 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   Future<String> _checkApiStatus() async {
-    if (widget.preferences.useMockData) return 'Mock data';
     try {
       final connectivity = await Connectivity().checkConnectivity();
       if (connectivity.every((result) => result == ConnectivityResult.none)) {
@@ -380,15 +382,21 @@ class _DashboardContentState extends State<DashboardContent> {
       }
       await Future.wait([
         _weatherFuture,
-        _calendarFuture,
+        _calendarFuture.then((calendar) {
+          if (calendar.isOffline) {
+            throw const FormatException(
+              'Public holidays are using offline data.',
+            );
+          }
+        }),
         http
             .get(Uri.parse('https://jsonplaceholder.typicode.com/users'))
             .timeout(const Duration(seconds: 10))
             .then((response) {
-          if (response.statusCode != 200) {
-            throw Exception('API returned ${response.statusCode}');
-          }
-        }),
+              if (response.statusCode != 200) {
+                throw Exception('API returned ${response.statusCode}');
+              }
+            }),
       ]);
       return 'Online';
     } catch (error) {
@@ -402,7 +410,9 @@ class _DashboardContentState extends State<DashboardContent> {
       _handleConnectivityChange(results, announce: false);
       return _isWifiConnected ? 'Connected' : 'Disconnected';
     } catch (_) {
-      _handleConnectivityChange(const [ConnectivityResult.none], announce: false);
+      _handleConnectivityChange(const [
+        ConnectivityResult.none,
+      ], announce: false);
       return 'Disconnected';
     }
   }
@@ -426,7 +436,9 @@ class _DashboardContentState extends State<DashboardContent> {
 
     setState(() {
       _isWifiConnected = isConnected;
-      _wifiStatusFuture = Future.value(isConnected ? 'Connected' : 'Disconnected');
+      _wifiStatusFuture = Future.value(
+        isConnected ? 'Connected' : 'Disconnected',
+      );
       PortalDataService.resetInFlightRequest();
       _reloadDashboard();
     });
@@ -448,25 +460,60 @@ class _DashboardContentState extends State<DashboardContent> {
   Future<String> _checkGpsStatus() async {
     try {
       final enabled = await Geolocator.isLocationServiceEnabled();
-      if (mounted) setState(() => _isGpsActive = enabled);
-      return enabled ? 'Active' : 'Disabled';
+      final permission = await Geolocator.checkPermission();
+      final label = !enabled
+          ? 'Location off'
+          : permission == LocationPermission.deniedForever
+          ? 'Allow in settings'
+          : permission == LocationPermission.denied
+          ? 'Permission needed'
+          : 'Active';
+      final available = label == 'Active';
+      if (mounted) {
+        setState(() {
+          _isGpsActive = available;
+          _gpsStatusLabel = label;
+        });
+      }
+      return label;
     } catch (_) {
-      if (mounted) setState(() => _isGpsActive = true);
-      return 'Active';
+      if (mounted) {
+        setState(() {
+          _isGpsActive = false;
+          _gpsStatusLabel = 'Unavailable';
+        });
+      }
+      return 'Unavailable';
     }
   }
 
-  Future<void> _refreshLocationAndWeather() async {
+  Future<void> _refreshLocationAndWeather({
+    bool announce = true,
+    bool openSettingsIfDeniedForever = true,
+  }) async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever &&
+          openSettingsIfDeniedForever) {
+        await Geolocator.openAppSettings();
+      }
+    } catch (_) {
+      // Weather falls back to the LPU Cavite coordinates if location is unavailable.
+    }
     setState(() {
       _gpsStatusFuture = _checkGpsStatus();
       _weatherFuture = _fetchWeather();
     });
     final status = await _gpsStatusFuture;
-    if (mounted) {
+    await _weatherFuture;
+    if (mounted && announce) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'GPS & Weather Synced ($status): Manggahan, General Trias',
+            'GPS & Weather Synced ($status): $_weatherLocationLabel',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -483,31 +530,41 @@ class _DashboardContentState extends State<DashboardContent> {
     }
   }
 
-  Future<Map<String, dynamic>> _fetchWeather() async {
-    if (widget.preferences.useMockData) {
-      return {
-        'temperature_2m': 31,
-        'relative_humidity_2m': 56,
-        'wind_speed_10m': 7,
-        'weather_code': 0,
-      };
-    }
+  Future<WeatherData> _fetchWeather() async {
     try {
+      var latitude = _caviteLatitude;
+      var longitude = _caviteLongitude;
+      var locationLabel = 'LPU Cavite';
+      final locationEnabled = await Geolocator.isLocationServiceEnabled();
+      final permission = await Geolocator.checkPermission();
+      if (locationEnabled &&
+          (permission == LocationPermission.whileInUse ||
+              permission == LocationPermission.always)) {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        latitude = position.latitude;
+        longitude = position.longitude;
+        locationLabel = await _resolveLocationName(latitude, longitude);
+        _isGpsActive = true;
+      }
+      _weatherLocationLabel = locationLabel;
       final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
-        'latitude': '$_caviteLatitude',
-        'longitude': '$_caviteLongitude',
-        'current':
-            'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m',
-        'timezone': 'Asia/Manila',
+        'latitude': '$latitude',
+        'longitude': '$longitude',
+        'current': 'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m',
+        'timezone': 'auto',
       });
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) {
         throw Exception('Weather API returned ${response.statusCode}');
       }
       final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic> &&
-          decoded['current'] is Map<String, dynamic>) {
-        return Map<String, dynamic>.from(decoded['current'] as Map);
+      if (decoded is WeatherData && decoded['current'] is WeatherData) {
+        return WeatherData.from(decoded['current'] as Map);
       }
     } catch (e) {
       debugPrint('Weather fetch error: $e');
@@ -520,13 +577,70 @@ class _DashboardContentState extends State<DashboardContent> {
     };
   }
 
-  Future<List<Map<String, dynamic>>> _fetchCalendar() async {
-    return [
-      {
-        'date': '2026-10-27',
-        'name': 'No upcoming events.',
+  Future<String> _resolveLocationName(double latitude, double longitude) async {
+    try {
+      final places = await Geocoding().placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
+      if (places.isNotEmpty) {
+        final place = places.first;
+        const broadAreas = {
+          'cavite',
+          'calabarzon',
+          'region iv-a',
+          'philippines',
+        };
+        final localityCandidates =
+            [place.locality, place.subAdministrativeArea, place.subLocality]
+                .whereType<String>()
+                .map((value) => value.trim())
+                .where(
+                  (value) =>
+                      value.isNotEmpty &&
+                      !broadAreas.contains(value.toLowerCase()),
+                );
+        final locality = localityCandidates.firstOrNull;
+        if (locality != null) {
+          final region = [place.subAdministrativeArea, place.administrativeArea]
+              .whereType<String>()
+              .map((value) => value.trim())
+              .firstWhere(
+                (value) =>
+                    value.isNotEmpty &&
+                    value.toLowerCase() != locality.toLowerCase() &&
+                    !{
+                      'calabarzon',
+                      'region iv-a',
+                      'philippines',
+                    }.contains(value.toLowerCase()),
+                orElse: () => '',
+              );
+          final parts = [
+            locality,
+            region,
+          ].where((part) => part.isNotEmpty).toList();
+          return parts.join(', ');
+        }
       }
-    ];
+    } catch (error) {
+      debugPrint('Reverse geocoding failed: $error');
+    }
+    return 'GPS ${latitude.toStringAsFixed(3)}, ${longitude.toStringAsFixed(3)}';
+  }
+
+  Future<HolidayCalendarData> _fetchCalendar() =>
+      PublicHolidayService.fetch(year: _selectedCalendarDate.year);
+
+  void _selectCalendarDate(DateTime date) {
+    final yearChanged = date.year != _selectedCalendarDate.year;
+    setState(() {
+      _selectedCalendarDate = date;
+      if (yearChanged) {
+        _calendarFuture = PublicHolidayService.fetch(year: date.year);
+        _apiStatusFuture = _checkApiStatus();
+      }
+    });
   }
 
   Future<void> _showReports() async {
@@ -534,10 +648,12 @@ class _DashboardContentState extends State<DashboardContent> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Dashboard Report'),
-        content: Text('Total registered student records: $_studentCount\n'
-            'CCS Programs: 4\n'
-            'Active Students: 401\n'
-            'Average Attendance: 93%'),
+        content: Text(
+          'Total registered student records: $_studentCount\n'
+          'CCS Programs: 4\n'
+          'Active Students: 401\n'
+          'Average Attendance: 93%',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -650,7 +766,10 @@ class _DashboardContentState extends State<DashboardContent> {
             children: [
               Text(
                 name,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -663,20 +782,29 @@ class _DashboardContentState extends State<DashboardContent> {
               const Divider(height: 24),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.badge_outlined, color: Color(0xFF800000)),
+                leading: const Icon(
+                  Icons.badge_outlined,
+                  color: Color(0xFF800000),
+                ),
                 title: const Text('Student ID'),
                 subtitle: Text(studentId),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.email_outlined, color: Color(0xFF800000)),
+                leading: const Icon(
+                  Icons.email_outlined,
+                  color: Color(0xFF800000),
+                ),
                 title: const Text('Email'),
                 subtitle: Text(email),
               ),
               if (contact.isNotEmpty)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.phone_outlined, color: Color(0xFF800000)),
+                  leading: const Icon(
+                    Icons.phone_outlined,
+                    color: Color(0xFF800000),
+                  ),
                   title: const Text('Contact'),
                   subtitle: Text(contact),
                 ),
@@ -702,8 +830,33 @@ class _DashboardContentState extends State<DashboardContent> {
     final hour = _clockNow.hour.toString().padLeft(2, '0');
     final minute = _clockNow.minute.toString().padLeft(2, '0');
     final timeStr = '$hour:$minute';
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    final dateStr =
+        '${weekdays[_clockNow.weekday - 1]}, ${_clockNow.day} ${months[_clockNow.month - 1]} ${_clockNow.year}';
 
-    return FutureBuilder<Map<String, dynamic>>(
+    return FutureBuilder<WeatherData>(
       future: _weatherFuture,
       builder: (context, snapshot) {
         final data = snapshot.data;
@@ -716,11 +869,11 @@ class _DashboardContentState extends State<DashboardContent> {
           condition: 'Sunny',
           windSpeed: wind,
           humidity: humidity,
-          time: timeStr.isNotEmpty ? timeStr : '10:49',
-          date: 'Tuesday, 27 October 2026',
-          location: 'Manggahan, General Trias',
+          time: timeStr,
+          date: dateStr,
+          location: _weatherLocationLabel,
           isGpsActive: _isGpsActive,
-          onLocationTap: _refreshLocationAndWeather,
+          onLocationTap: () => _refreshLocationAndWeather(),
         );
       },
     );
@@ -728,23 +881,49 @@ class _DashboardContentState extends State<DashboardContent> {
 
   // 2. User Overview Card Widget
   Widget _buildOverviewCard() {
-    return OverviewCardWidget(
-      name: 'Novy Chariz Tablac',
-      studentId: '2024-2-02204',
-      program: 'BSIT-WM',
-      yearLevel: '3rd Year',
-      email: '2024-2-02204@lpunetwork.edu.ph',
-      profilePhotoBytes: widget.preferences.profilePhotoBytes,
-      onEditProfile: widget.onRegisterStudent,
-      onViewFullProfile: () => _showFullProfile(
-        name: 'Novy Chariz Tablac',
-        studentId: '2024-2-02204',
-        email: '2024-2-02204@lpunetwork.edu.ph',
-        program: 'BSIT-WM',
-        yearLevel: '3rd Year',
-        contact: '+63 912 345 6789',
-        address: 'Manggahan, General Trias, Cavite',
-      ),
+    return FutureBuilder<Student?>(
+      future: _profileStudentFuture,
+      builder: (context, snapshot) {
+        final student = snapshot.data;
+        final name = student?.name ?? 'Student profile';
+        final id = student?.id ?? 'Register a student to complete your profile';
+        final program = student?.program ?? '';
+        final year = student?.yearLevel ?? '';
+        final email = student?.email ?? '';
+        return OverviewCardWidget(
+          name: name,
+          studentId: id,
+          program: program,
+          yearLevel: year,
+          email: email,
+          profilePhotoBytes: widget.preferences.profilePhotoBytes,
+          onEditProfile: student == null
+              ? widget.onRegisterStudent
+              : () async {
+                  await Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RegistrationPage(
+                        student: student,
+                        isProfileEditor: true,
+                      ),
+                    ),
+                  );
+                  if (mounted) setState(_reloadDashboard);
+                },
+          onViewFullProfile: student == null
+              ? widget.onRegisterStudent
+              : () => _showFullProfile(
+                  name: student.name,
+                  studentId: student.id,
+                  email: student.email,
+                  program: student.program,
+                  yearLevel: student.yearLevel,
+                  contact: student.contact,
+                  address: student.address,
+                ),
+        );
+      },
     );
   }
 
@@ -766,9 +945,10 @@ class _DashboardContentState extends State<DashboardContent> {
         QuickActionButton(
           label: 'GPS',
           icon: Icons.gps_fixed_outlined,
-          statusDotColor:
-              _isGpsActive ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
-          statusText: _isGpsActive ? 'Active' : 'Disabled',
+          statusDotColor: _isGpsActive
+              ? const Color(0xFF2E7D32)
+              : const Color(0xFFC62828),
+          statusText: _gpsStatusLabel,
           onTap: _refreshLocationAndWeather,
         ),
         QuickActionButton(
@@ -808,8 +988,9 @@ class _DashboardContentState extends State<DashboardContent> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = screenWidth < 360 ? 144.0 : 154.0;
     final textColor = isDark ? AppTokens.textDark : AppTokens.textLight;
-    final secondaryTextColor =
-        isDark ? AppTokens.textSecondaryDark : AppTokens.textSecondaryLight;
+    final secondaryTextColor = isDark
+        ? AppTokens.textSecondaryDark
+        : AppTokens.textSecondaryLight;
 
     final cities = [
       ('Manila', 8, 'PHT · Philippines'),
@@ -862,7 +1043,7 @@ class _DashboardContentState extends State<DashboardContent> {
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                          fontSize: 12,
                           color: textColor,
                         ),
                       ),
@@ -879,7 +1060,7 @@ class _DashboardContentState extends State<DashboardContent> {
                   '$hour:$minute $period',
                   style: TextStyle(
                     fontFamily: 'Inter',
-                  fontSize: 20,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: textColor,
                   ),
@@ -906,14 +1087,20 @@ class _DashboardContentState extends State<DashboardContent> {
 
   // 5. Swipeable Week Calendar
   Widget _buildCalendarWidget() {
-    return SwipeableWeekCalendarWidget(
-      selectedDate: _selectedCalendarDate,
-      onDateSelected: (newDate) {
-        setState(() {
-          _selectedCalendarDate = newDate;
-        });
+    return FutureBuilder<HolidayCalendarData>(
+      future: _calendarFuture,
+      builder: (context, snapshot) {
+        final calendar = snapshot.data;
+        return SwipeableWeekCalendarWidget(
+          selectedDate: _selectedCalendarDate,
+          onDateSelected: _selectCalendarDate,
+          holidays: calendar?.holidays ?? const [],
+          holidaysOffline: calendar?.isOffline ?? false,
+          eventText: snapshot.connectionState == ConnectionState.waiting
+              ? 'Loading public holiday dates…'
+              : 'No public holiday on this date.',
+        );
       },
-      eventText: 'No upcoming events.',
     );
   }
 
@@ -931,8 +1118,9 @@ class _DashboardContentState extends State<DashboardContent> {
     final cardColor = Theme.of(context).cardColor;
     final borderColor = Theme.of(context).dividerColor;
     final textColor = isDark ? AppTokens.textDark : AppTokens.textLight;
-    final secondaryTextColor =
-        isDark ? AppTokens.textSecondaryDark : AppTokens.textSecondaryLight;
+    final secondaryTextColor = isDark
+        ? AppTokens.textSecondaryDark
+        : AppTokens.textSecondaryLight;
 
     return FutureBuilder<List<RecentActivity>>(
       future: _activityFuture,
@@ -942,7 +1130,10 @@ class _DashboardContentState extends State<DashboardContent> {
           return const LinearProgressIndicator();
         }
         if (activities.isEmpty) {
-          return Text('No activity yet', style: TextStyle(color: secondaryTextColor));
+          return Text(
+            'No activity yet',
+            style: TextStyle(color: secondaryTextColor),
+          );
         }
         return Column(
           children: [
@@ -954,7 +1145,10 @@ class _DashboardContentState extends State<DashboardContent> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: borderColor),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Icon(Icons.history, size: 18, color: secondaryTextColor),
@@ -963,22 +1157,35 @@ class _DashboardContentState extends State<DashboardContent> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(activity.title, style: TextStyle(
-                            fontFamily: 'Inter', fontSize: 12,
-                            fontWeight: FontWeight.w600, color: textColor,
-                          )),
+                          Text(
+                            activity.title,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
                           if (activity.detail.isNotEmpty)
-                            Text(activity.detail, style: TextStyle(
-                              fontFamily: 'Inter', fontSize: 11,
-                              color: secondaryTextColor,
-                            )),
+                            Text(
+                              activity.detail,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11,
+                                color: secondaryTextColor,
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    Text(_formatActivityTime(activity.timestamp), style: TextStyle(
-                      fontFamily: 'Inter', fontSize: 10,
-                      color: secondaryTextColor,
-                    )),
+                    Text(
+                      _formatActivityTime(activity.timestamp),
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        color: secondaryTextColor,
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -34,54 +34,58 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
     CcsProgramData(
       code: 'BSCS-DS',
       name: 'Data Science',
-      count: 96,
+      count: 100,
       icon: Icons.storage_rounded,
-      iconColor: Color(0xFFE65100),
-      iconBackgroundColor: Color(0xFFFFF3E0),
+      iconColor: Color(0xFFE85D04),
+      iconBackgroundColor: Color(0xFFFFEEE5),
     ),
     CcsProgramData(
       code: 'BSCS-SE',
       name: 'Software Engineering',
-      count: 104,
+      count: 90,
       icon: Icons.code_rounded,
-      iconColor: Color(0xFF1565C0),
-      iconBackgroundColor: Color(0xFFE3F2FD),
+      iconColor: Color(0xFF2563EB),
+      iconBackgroundColor: Color(0xFFEAF0FF),
     ),
     CcsProgramData(
       code: 'BSIT-NS',
       name: 'Network & Security',
-      count: 128,
+      count: 120,
       icon: Icons.shield_outlined,
-      iconColor: Color(0xFF00838F),
-      iconBackgroundColor: Color(0xFFE0F7FA),
+      iconColor: Color(0xFF0096C7),
+      iconBackgroundColor: Color(0xFFE5F7FC),
     ),
     CcsProgramData(
       code: 'BSIT-WM',
-      name: 'Web & Mobile Technology',
-      count: 142,
+      name: 'Web & Mobile Development',
+      count: 150,
       icon: Icons.public_rounded,
-      iconColor: Color(0xFF7B1FA2),
-      iconBackgroundColor: Color(0xFFF3E5F5),
+      iconColor: Color(0xFF7B2CBF),
+      iconBackgroundColor: Color(0xFFF3EAFE),
     ),
   ];
 
   Widget _buildCard(BuildContext context, CcsProgramData program) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF262626) : Colors.white;
-    final textColor = isDark ? const Color(0xFFFAFDEA) : const Color(0xFF171717);
+    final textColor = isDark
+        ? const Color(0xFFFAFDEA)
+        : const Color(0xFF171717);
     final secondaryTextColor = Theme.of(context).colorScheme.onSurfaceVariant;
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Theme.of(context).dividerColor),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -198,7 +202,8 @@ class CcsProgramStatsGridWidget extends StatelessWidget {
               mainAxisSpacing: 12,
               mainAxisExtent: constraints.maxWidth < 360 ? 156 : 148,
             ),
-            itemBuilder: (context, index) => _buildCard(context, programs[index]),
+            itemBuilder: (context, index) =>
+                _buildCard(context, programs[index]),
           ),
         ),
       ],

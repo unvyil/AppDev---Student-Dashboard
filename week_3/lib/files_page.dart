@@ -29,7 +29,7 @@ class _FilesPageState extends State<FilesPage> {
     setState(() => _exporting = true);
 
     try {
-      final file = await FileService.exportStudents();
+      await FileService.exportStudents();
 
       if (!mounted) return;
 
@@ -37,7 +37,9 @@ class _FilesPageState extends State<FilesPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Saved student_info.txt in internal storage:\n${file.path}'),
+          content: Text(
+            'Exported all records to ${await FileService.getFilePath()}',
+          ),
         ),
       );
     } catch (error) {
@@ -61,8 +63,10 @@ class _FilesPageState extends State<FilesPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Export and view your saved student information.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          'Export and view your saved student records.',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 20),
 
@@ -72,7 +76,9 @@ class _FilesPageState extends State<FilesPage> {
               child: Icon(Icons.description_outlined),
             ),
             title: const Text('student_info.txt'),
-            subtitle: const Text('Plain-text student information export'),
+            subtitle: const Text(
+              'All registered student records as plain text',
+            ),
             trailing: const Icon(Icons.insert_drive_file_outlined),
           ),
         ),

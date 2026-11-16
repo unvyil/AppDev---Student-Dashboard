@@ -73,7 +73,7 @@ class PortalDataService {
       final hasNetwork = connectivity.any(
         (result) => result != ConnectivityResult.none,
       );
-      if (!hasNetwork) return _getCachedOrBundledUsers();
+      if (!hasNetwork) return await _getCachedOrBundledUsers();
 
       final response = await http
           .get(
@@ -82,7 +82,9 @@ class PortalDataService {
           )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) {
-        throw Exception('JSONPlaceholder returned HTTP ${response.statusCode}.');
+        throw Exception(
+          'JSONPlaceholder returned HTTP ${response.statusCode}.',
+        );
       }
       final users = _decodeUsers(response.body);
       if (users.isEmpty) {

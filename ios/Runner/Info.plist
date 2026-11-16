@@ -6,6 +6,8 @@
 	<string>Take a photo to use as your student profile picture.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Select a photo to use as your student profile picture.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Use your current location to show the nearby area and local weather.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

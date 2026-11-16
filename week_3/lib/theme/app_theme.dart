@@ -30,11 +30,7 @@ class AppTokens {
 
   // Elevation Shadows
   static const List<BoxShadow> softCardShadow = [
-    BoxShadow(
-      color: Color(0x0D000000),
-      blurRadius: 8.0,
-      offset: Offset(0, 2),
-    ),
+    BoxShadow(color: Color(0x0D000000), blurRadius: 8.0, offset: Offset(0, 2)),
   ];
 
   static ThemeData buildTheme(Brightness brightness) {
@@ -135,8 +131,10 @@ class AppTokens {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: card,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         hintStyle: TextStyle(
           fontFamily: 'Inter',
           color: secondaryTextColor,
@@ -168,18 +166,33 @@ class AppTokens {
         headlineMedium: TextStyle(fontFamily: 'Inter', color: textColor),
         headlineSmall: TextStyle(fontFamily: 'Inter', color: textColor),
         titleLarge: TextStyle(
-            fontFamily: 'Inter', fontWeight: FontWeight.bold, color: textColor),
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
         titleMedium: TextStyle(
-            fontFamily: 'Inter', fontWeight: FontWeight.w600, color: textColor),
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
         titleSmall: TextStyle(
-            fontFamily: 'Inter', fontWeight: FontWeight.w500, color: textColor),
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w500,
+          color: textColor,
+        ),
         bodyLarge: TextStyle(fontFamily: 'Inter', color: textColor),
         bodyMedium: TextStyle(fontFamily: 'Inter', color: textColor),
         bodySmall: TextStyle(fontFamily: 'Inter', color: secondaryTextColor),
         labelLarge: TextStyle(
-            fontFamily: 'Inter', fontWeight: FontWeight.w600, color: textColor),
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
         labelMedium: TextStyle(
-            fontFamily: 'Inter', fontWeight: FontWeight.w500, color: textColor),
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w500,
+          color: textColor,
+        ),
         labelSmall: TextStyle(fontFamily: 'Inter', color: secondaryTextColor),
       ),
     );

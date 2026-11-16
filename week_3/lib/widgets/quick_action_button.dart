@@ -27,13 +27,15 @@ class QuickActionButton extends StatelessWidget {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.dividerColor),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -64,7 +66,10 @@ class QuickActionButton extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: statusDotColor,
                             shape: BoxShape.circle,
-                            border: Border.all(color: theme.cardColor, width: 1.5),
+                            border: Border.all(
+                              color: theme.cardColor,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),

@@ -1,10 +1,10 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
-project(all_lab_tablac_8 LANGUAGES CXX)
+project(lpu_portal_week_3 LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "all_lab_tablac_8")
+set(BINARY_NAME "lpu_portal_week_3")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

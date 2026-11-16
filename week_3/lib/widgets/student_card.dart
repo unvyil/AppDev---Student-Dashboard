@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 
 class StudentCard extends StatelessWidget {
-  const StudentCard({
-    super.key,
-    required this.student,
-    this.onTap,
-  });
+  const StudentCard({super.key, required this.student, this.onTap});
 
   final Student student;
   final VoidCallback? onTap;
@@ -38,13 +34,15 @@ class StudentCard extends StatelessWidget {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.dividerColor),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -125,7 +123,7 @@ class StudentCard extends StatelessWidget {
                                 Icon(
                                   Icons.phone_outlined,
                                   size: 12,
-                                color: theme.colorScheme.onSurfaceVariant,
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -150,11 +148,11 @@ class StudentCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isDark
                             ? (isActive
-                                ? const Color(0xFF24382A)
-                                : const Color(0xFF40272A))
+                                  ? const Color(0xFF24382A)
+                                  : const Color(0xFF40272A))
                             : (isActive
-                                ? const Color(0xFFE8F5E9)
-                                : const Color(0xFFFFEBEE)),
+                                  ? const Color(0xFFE8F5E9)
+                                  : const Color(0xFFFFEBEE)),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -163,8 +161,12 @@ class StudentCard extends StatelessWidget {
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: isActive
-                              ? (isDark ? const Color(0xFFE0B0B0) : const Color(0xFF2E7D32))
-                              : (isDark ? const Color(0xFFD88A8A) : const Color(0xFFC62828)),
+                              ? (isDark
+                                    ? const Color(0xFFE0B0B0)
+                                    : const Color(0xFF2E7D32))
+                              : (isDark
+                                    ? const Color(0xFFD88A8A)
+                                    : const Color(0xFFC62828)),
                         ),
                       ),
                     ),
@@ -182,8 +184,12 @@ class StudentCard extends StatelessWidget {
                           backgroundColor: theme.dividerColor,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             isActive
-                                ? (isDark ? const Color(0xFFE0B0B0) : const Color(0xFF2E7D32))
-                                : (isDark ? const Color(0xFFD88A8A) : const Color(0xFFC62828)),
+                                ? (isDark
+                                      ? const Color(0xFFE0B0B0)
+                                      : const Color(0xFF2E7D32))
+                                : (isDark
+                                      ? const Color(0xFFD88A8A)
+                                      : const Color(0xFFC62828)),
                           ),
                         ),
                       ),

@@ -79,11 +79,19 @@ class RecentActivity {
 
 class StorageService {
   static const String _key = 'lpu_students';
+  static const String _profileKey = 'lpu_student_profile';
   static const String _activityKey = 'lpu_recent_activity';
+
+  static Student? selectProfileStudent(Iterable<Student> students) {
+    return students
+            .where((student) => student.name.toLowerCase().contains('novy'))
+            .firstOrNull ??
+        students.firstOrNull;
+  }
 
   static const List<Student> defaultStudents = [
     Student(
-      name: 'Juan De La Cruz',
+      name: 'Juan Dela Cruz',
       id: '2024-2-00294',
       email: '2024-2-00294@lpunetwork.edu.ph',
       program: 'BSIT-NS',
@@ -168,9 +176,7 @@ class StorageService {
     }
     final list = decoded
         .whereType<Map>()
-        .map(
-          (item) => RecentActivity.fromJson(Map<String, dynamic>.from(item)),
-        )
+        .map((item) => RecentActivity.fromJson(Map<String, dynamic>.from(item)))
         .toList();
     if (list.isEmpty) {
       return [
@@ -213,6 +219,33 @@ class StorageService {
       return List<Student>.from(defaultStudents);
     }
     return list;
+  }
+
+  static Future<Student?> getProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_profileKey);
+    if (raw != null) {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return Student.fromJson(Map<String, dynamic>.from(decoded));
+      }
+    }
+
+    final existingProfile = selectProfileStudent(await getStudents());
+    if (existingProfile != null) {
+      await prefs.setString(_profileKey, jsonEncode(existingProfile.toJson()));
+    }
+    return existingProfile;
+  }
+
+  static Future<void> saveProfile(Student student) async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = await prefs.setString(
+      _profileKey,
+      jsonEncode(student.toJson()),
+    );
+    if (!saved) throw StateError('The profile could not be saved locally.');
+    await recordActivity('Profile updated', student.name);
   }
 
   static Future<void> saveStudent(Student student) async {

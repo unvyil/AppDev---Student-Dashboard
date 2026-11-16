@@ -4,9 +4,10 @@ import 'services/storage_service.dart';
 import 'summary_page.dart';
 
 class RegistrationPage extends StatefulWidget {
-  const RegistrationPage({super.key, this.student});
+  const RegistrationPage({super.key, this.student, this.isProfileEditor = false});
 
   final Student? student;
+  final bool isProfileEditor;
 
   @override
   State<RegistrationPage> createState() => _RegistrationPageState();
@@ -15,7 +16,7 @@ class RegistrationPage extends StatefulWidget {
 class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameController = TextEditingController();
+  final _nameController = TextEditingController(text: 'Juan Dela Cruz');
   final _idController = TextEditingController();
   final _emailController = TextEditingController();
   final _contactController = TextEditingController();
@@ -93,7 +94,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
 
     try {
-      if (widget.student == null) {
+      if (widget.isProfileEditor) {
+        await StorageService.saveProfile(student);
+      } else if (widget.student == null) {
         await StorageService.saveStudent(student);
       } else {
         await StorageService.updateStudent(widget.student!.id, student);
@@ -101,7 +104,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
       if (!mounted) return;
 
-      if (widget.student != null) {
+      if (widget.isProfileEditor || widget.student != null) {
         Navigator.pop(context);
       } else {
         await Navigator.push(

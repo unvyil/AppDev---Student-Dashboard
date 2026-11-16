@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'registration_page.dart';
 import 'services/storage_service.dart';
-import 'services/portal_data_service.dart';
 import 'widgets/ccs_program_stats_grid_widget.dart';
 import 'widgets/student_card.dart';
 import 'widgets/student_kpi_row_widget.dart';
@@ -25,15 +24,12 @@ class _StudentsPageState extends State<StudentsPage> {
   @override
   void initState() {
     super.initState();
-    _loadStudents();
+    _studentsFuture = _loadStudents();
   }
 
   @override
   void didUpdateWidget(covariant StudentsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.useMockData != widget.useMockData) {
-      setState(_loadStudents);
-    }
   }
 
   @override
@@ -42,20 +38,18 @@ class _StudentsPageState extends State<StudentsPage> {
     super.dispose();
   }
 
-  void _loadStudents() {
-    _studentsFuture = widget.useMockData
-        ? PortalDataService.fetchUsers().then(
-            (users) => users
-                .asMap()
-                .entries
-                .map((entry) => PortalDataService.toStudent(entry.value, entry.key))
-                .toList(),
-          )
-        : StorageService.getStudents();
+  Future<List<Student>> _loadStudents() => StorageService.getStudents();
+
+  Future<void> _openAddStudent() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const RegistrationPage()),
+    );
+    if (mounted) await _refresh();
   }
 
   Future<void> _refresh() async {
-    setState(_loadStudents);
+    setState(() => _studentsFuture = _loadStudents());
     await _studentsFuture;
   }
 
@@ -146,8 +140,7 @@ class _StudentsPageState extends State<StudentsPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final toggleBg = isDark ? const Color(0xFF262626) : const Color(0xFFE8E8EC);
     final selectedColor = isDark ? const Color(0xFFE0B0B0) : maroonColor;
-    final inactiveTextColor =
-        Theme.of(context).colorScheme.onSurfaceVariant;
+    final inactiveTextColor = Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Container(
       height: 38,
@@ -218,8 +211,6 @@ class _StudentsPageState extends State<StudentsPage> {
   Widget _buildSearchBar() {
     final cardColor = Theme.of(context).cardColor;
     final borderColor = Theme.of(context).dividerColor;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Row(
       children: [
         Expanded(
@@ -307,13 +298,24 @@ class _StudentsPageState extends State<StudentsPage> {
               : '${(students.fold<double>(0, (sum, student) => sum + student.attendance) / students.length * 100).round()}%',
         ),
         const SizedBox(height: 16),
-        Text(
-          'Student List',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Student List',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: _openAddStudent,
+              icon: const Icon(Icons.person_add_alt_1, size: 18),
+              label: const Text('Add Student'),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
         _buildSearchBar(),
@@ -396,8 +398,8 @@ class _StudentsPageState extends State<StudentsPage> {
                       if (snapshot.hasError) {
                         return Container(
                           padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: Theme.of(context).dividerColor,

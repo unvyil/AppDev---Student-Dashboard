@@ -47,6 +47,7 @@ class _AuthPageState extends State<AuthPage> {
     setState(() {
       _isSignup = signup;
       _formKey.currentState?.reset();
+      if (signup) _nameController.clear();
       // Keep credentials in their own fields when the form changes mode.
       // Refill the login password only when returning to the login form.
       _passwordController.text = signup
@@ -123,9 +124,10 @@ class _AuthPageState extends State<AuthPage> {
             padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
-              child: Form(
-                key: _formKey,
-                child: Column(
+              child: AutofillGroup(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Image.asset(
@@ -163,6 +165,7 @@ class _AuthPageState extends State<AuthPage> {
                       TextFormField(
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
+                        autofillHints: const [AutofillHints.name],
                         validator: (value) => _required(value, 'Full name'),
                         decoration: const InputDecoration(
                           hintText: 'Enter your full name',
@@ -176,8 +179,9 @@ class _AuthPageState extends State<AuthPage> {
                     TextFormField(
                       controller: _idController,
                       keyboardType: TextInputType.emailAddress,
-                        enableSuggestions: false,
-                        autocorrect: false,
+                      autofillHints: const [AutofillHints.username],
+                      enableSuggestions: false,
+                      autocorrect: false,
                       validator: (value) => _required(value, 'Student ID or email'),
                       decoration: const InputDecoration(
                         hintText: 'e.g. 2024-2-02204',
@@ -190,6 +194,9 @@ class _AuthPageState extends State<AuthPage> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      autofillHints: [
+                        _isSignup ? AutofillHints.newPassword : AutofillHints.password,
+                      ],
                       enableSuggestions: false,
                       autocorrect: false,
                       validator: (value) {
@@ -223,6 +230,7 @@ class _AuthPageState extends State<AuthPage> {
                       TextFormField(
                         controller: _confirmController,
                         obscureText: _obscurePassword,
+                        autofillHints: const [AutofillHints.newPassword],
                         validator: (value) {
                           final requiredError =
                               _required(value, 'Confirm password');
@@ -289,6 +297,7 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                     ),
                   ],
+                  ),
                 ),
               ),
             ),

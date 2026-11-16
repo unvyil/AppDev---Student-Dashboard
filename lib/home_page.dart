@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 
 import 'about_lpu_page.dart';
@@ -281,6 +282,7 @@ class _DashboardContentState extends State<DashboardContent> {
   static const double _caviteLongitude = 120.881;
 
   late Future<List<Student>> _studentsFuture;
+  late Future<Student?> _profileStudentFuture;
   late Future<Map<String, dynamic>> _weatherFuture;
   late Future<List<Map<String, dynamic>>> _calendarFuture;
   late Future<String> _apiStatusFuture;
@@ -290,27 +292,30 @@ class _DashboardContentState extends State<DashboardContent> {
   bool _isWifiConnected = false;
   bool _hasConnectivityUpdate = false;
   bool _isGpsActive = true;
+  String _gpsStatusLabel = 'Checking';
+  String _weatherLocationLabel = 'LPU Cavite';
   late DateTime _clockNow;
   Timer? _clockTimer;
   int _studentCount = 0;
   late Future<List<RecentActivity>> _activityFuture;
   late DateTime _selectedCalendarDate;
-  late bool _lastMockDataSetting;
 
   @override
   void initState() {
     super.initState();
-    _lastMockDataSetting = widget.preferences.useMockData;
-    widget.preferences.addListener(_onPreferencesChanged);
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
       _handleConnectivityChange,
     );
     _clockNow = DateTime.now();
-    _selectedCalendarDate = DateTime(2026, 10, 27);
+    _selectedCalendarDate = DateTime.now();
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _clockNow = DateTime.now());
     });
     _reloadDashboard();
+    _refreshLocationAndWeather(
+      announce: false,
+      openSettingsIfDeniedForever: false,
+    );
     _recordDashboardOpen();
   }
 
@@ -318,27 +323,12 @@ class _DashboardContentState extends State<DashboardContent> {
   void dispose() {
     _clockTimer?.cancel();
     _connectivitySubscription?.cancel();
-    widget.preferences.removeListener(_onPreferencesChanged);
     super.dispose();
   }
 
-  void _onPreferencesChanged() {
-    final useMockData = widget.preferences.useMockData;
-    if (useMockData == _lastMockDataSetting) return;
-    _lastMockDataSetting = useMockData;
-    if (mounted) setState(_reloadDashboard);
-  }
-
   void _reloadDashboard() {
-    _studentsFuture = widget.preferences.useMockData
-        ? PortalDataService.fetchUsers().then(
-            (users) => users
-                .asMap()
-                .entries
-                .map((entry) => PortalDataService.toStudent(entry.value, entry.key))
-                .toList(),
-          )
-        : StorageService.getStudents();
+    _studentsFuture = StorageService.getStudents();
+    _profileStudentFuture = StorageService.getProfile();
     _activityFuture = StorageService.getRecentActivity();
     _weatherFuture = _fetchWeather();
     _calendarFuture = _fetchCalendar();
@@ -372,7 +362,6 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   Future<String> _checkApiStatus() async {
-    if (widget.preferences.useMockData) return 'Mock data';
     try {
       final connectivity = await Connectivity().checkConnectivity();
       if (connectivity.every((result) => result == ConnectivityResult.none)) {
@@ -448,25 +437,60 @@ class _DashboardContentState extends State<DashboardContent> {
   Future<String> _checkGpsStatus() async {
     try {
       final enabled = await Geolocator.isLocationServiceEnabled();
-      if (mounted) setState(() => _isGpsActive = enabled);
-      return enabled ? 'Active' : 'Disabled';
+      final permission = await Geolocator.checkPermission();
+      final label = !enabled
+          ? 'Location off'
+          : permission == LocationPermission.deniedForever
+          ? 'Allow in settings'
+          : permission == LocationPermission.denied
+          ? 'Permission needed'
+          : 'Active';
+      final available = label == 'Active';
+      if (mounted) {
+        setState(() {
+          _isGpsActive = available;
+          _gpsStatusLabel = label;
+        });
+      }
+      return label;
     } catch (_) {
-      if (mounted) setState(() => _isGpsActive = true);
-      return 'Active';
+      if (mounted) {
+        setState(() {
+          _isGpsActive = false;
+          _gpsStatusLabel = 'Unavailable';
+        });
+      }
+      return 'Unavailable';
     }
   }
 
-  Future<void> _refreshLocationAndWeather() async {
+  Future<void> _refreshLocationAndWeather({
+    bool announce = true,
+    bool openSettingsIfDeniedForever = true,
+  }) async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever &&
+          openSettingsIfDeniedForever) {
+        await Geolocator.openAppSettings();
+      }
+    } catch (_) {
+      // Weather falls back to the LPU Cavite coordinates if location is unavailable.
+    }
     setState(() {
       _gpsStatusFuture = _checkGpsStatus();
       _weatherFuture = _fetchWeather();
     });
     final status = await _gpsStatusFuture;
-    if (mounted) {
+    await _weatherFuture;
+    if (mounted && announce) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'GPS & Weather Synced ($status): Manggahan, General Trias',
+            'GPS & Weather Synced ($status): $_weatherLocationLabel',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -484,21 +508,33 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   Future<Map<String, dynamic>> _fetchWeather() async {
-    if (widget.preferences.useMockData) {
-      return {
-        'temperature_2m': 31,
-        'relative_humidity_2m': 56,
-        'wind_speed_10m': 7,
-        'weather_code': 0,
-      };
-    }
     try {
+      var latitude = _caviteLatitude;
+      var longitude = _caviteLongitude;
+      var locationLabel = 'LPU Cavite';
+      final locationEnabled = await Geolocator.isLocationServiceEnabled();
+      final permission = await Geolocator.checkPermission();
+      if (locationEnabled &&
+          (permission == LocationPermission.whileInUse ||
+              permission == LocationPermission.always)) {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        latitude = position.latitude;
+        longitude = position.longitude;
+        locationLabel = await _resolveLocationName(latitude, longitude);
+        _isGpsActive = true;
+      }
+      _weatherLocationLabel = locationLabel;
       final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
-        'latitude': '$_caviteLatitude',
-        'longitude': '$_caviteLongitude',
+        'latitude': '$latitude',
+        'longitude': '$longitude',
         'current':
             'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m',
-        'timezone': 'Asia/Manila',
+        'timezone': 'auto',
       });
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) {
@@ -520,10 +556,54 @@ class _DashboardContentState extends State<DashboardContent> {
     };
   }
 
+  Future<String> _resolveLocationName(double latitude, double longitude) async {
+    try {
+      final places = await Geocoding().placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
+      if (places.isNotEmpty) {
+        final place = places.first;
+        const broadAreas = {
+          'cavite', 'calabarzon', 'region iv-a', 'philippines',
+        };
+        final localityCandidates = [
+          place.locality,
+          place.subAdministrativeArea,
+          place.subLocality,
+        ].whereType<String>().map((value) => value.trim()).where(
+          (value) => value.isNotEmpty &&
+              !broadAreas.contains(value.toLowerCase()),
+        );
+        final locality = localityCandidates.firstOrNull;
+        if (locality != null) {
+          final region = [
+            place.subAdministrativeArea,
+            place.administrativeArea,
+          ].whereType<String>().map((value) => value.trim()).firstWhere(
+            (value) => value.isNotEmpty &&
+                value.toLowerCase() != locality.toLowerCase() &&
+                !{'calabarzon', 'region iv-a', 'philippines'}
+                    .contains(value.toLowerCase()),
+            orElse: () => '',
+          );
+          final parts = [locality, region]
+              .where((part) => part.isNotEmpty)
+              .toList();
+          return parts.join(', ');
+        }
+      }
+    } catch (error) {
+      debugPrint('Reverse geocoding failed: $error');
+    }
+    return 'GPS ${latitude.toStringAsFixed(3)}, ${longitude.toStringAsFixed(3)}';
+  }
+
   Future<List<Map<String, dynamic>>> _fetchCalendar() async {
+    final today = DateTime.now();
     return [
       {
-        'date': '2026-10-27',
+        'date': '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}',
         'name': 'No upcoming events.',
       }
     ];
@@ -702,6 +782,9 @@ class _DashboardContentState extends State<DashboardContent> {
     final hour = _clockNow.hour.toString().padLeft(2, '0');
     final minute = _clockNow.minute.toString().padLeft(2, '0');
     final timeStr = '$hour:$minute';
+    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    final dateStr = '${weekdays[_clockNow.weekday - 1]}, ${_clockNow.day} ${months[_clockNow.month - 1]} ${_clockNow.year}';
 
     return FutureBuilder<Map<String, dynamic>>(
       future: _weatherFuture,
@@ -716,11 +799,11 @@ class _DashboardContentState extends State<DashboardContent> {
           condition: 'Sunny',
           windSpeed: wind,
           humidity: humidity,
-          time: timeStr.isNotEmpty ? timeStr : '10:49',
-          date: 'Tuesday, 27 October 2026',
-          location: 'Manggahan, General Trias',
+          time: timeStr,
+          date: dateStr,
+          location: _weatherLocationLabel,
           isGpsActive: _isGpsActive,
-          onLocationTap: _refreshLocationAndWeather,
+          onLocationTap: () => _refreshLocationAndWeather(),
         );
       },
     );
@@ -728,23 +811,49 @@ class _DashboardContentState extends State<DashboardContent> {
 
   // 2. User Overview Card Widget
   Widget _buildOverviewCard() {
-    return OverviewCardWidget(
-      name: 'Novy Chariz Tablac',
-      studentId: '2024-2-02204',
-      program: 'BSIT-WM',
-      yearLevel: '3rd Year',
-      email: '2024-2-02204@lpunetwork.edu.ph',
-      profilePhotoBytes: widget.preferences.profilePhotoBytes,
-      onEditProfile: widget.onRegisterStudent,
-      onViewFullProfile: () => _showFullProfile(
-        name: 'Novy Chariz Tablac',
-        studentId: '2024-2-02204',
-        email: '2024-2-02204@lpunetwork.edu.ph',
-        program: 'BSIT-WM',
-        yearLevel: '3rd Year',
-        contact: '+63 912 345 6789',
-        address: 'Manggahan, General Trias, Cavite',
-      ),
+    return FutureBuilder<Student?>(
+      future: _profileStudentFuture,
+      builder: (context, snapshot) {
+        final student = snapshot.data;
+        final name = student?.name ?? 'Student profile';
+        final id = student?.id ?? 'Register a student to complete your profile';
+        final program = student?.program ?? '';
+        final year = student?.yearLevel ?? '';
+        final email = student?.email ?? '';
+        return OverviewCardWidget(
+          name: name,
+          studentId: id,
+          program: program,
+          yearLevel: year,
+          email: email,
+          profilePhotoBytes: widget.preferences.profilePhotoBytes,
+          onEditProfile: student == null
+              ? widget.onRegisterStudent
+              : () async {
+                  await Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RegistrationPage(
+                        student: student,
+                        isProfileEditor: true,
+                      ),
+                    ),
+                  );
+                  if (mounted) setState(_reloadDashboard);
+                },
+          onViewFullProfile: student == null
+              ? widget.onRegisterStudent
+              : () => _showFullProfile(
+                  name: student.name,
+                  studentId: student.id,
+                  email: student.email,
+                  program: student.program,
+                  yearLevel: student.yearLevel,
+                  contact: student.contact,
+                  address: student.address,
+                ),
+        );
+      },
     );
   }
 
@@ -768,7 +877,7 @@ class _DashboardContentState extends State<DashboardContent> {
           icon: Icons.gps_fixed_outlined,
           statusDotColor:
               _isGpsActive ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
-          statusText: _isGpsActive ? 'Active' : 'Disabled',
+          statusText: _gpsStatusLabel,
           onTap: _refreshLocationAndWeather,
         ),
         QuickActionButton(

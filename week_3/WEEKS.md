@@ -11,5 +11,5 @@ The week folders intentionally contain snapshots so coursework can be submitted 
 ## Notes
 
 - The API directory uses JSONPlaceholder sample users, not actual student records.
-- Week 3 uses `path_provider.getDownloadsDirectory()` when supported, then falls back to the app documents directory. That fallback is app-private storage, not the public Downloads folder.
+- Exports save `student_info.txt` only in app-private Documents storage. On Android, verify it with Device File Explorer; the file is not placed in public Downloads.
 - Programme enrolment counts are the supplied fixed lab-sheet figures; they are not calculated from registered records.

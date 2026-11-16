@@ -21,6 +21,10 @@ registration, local storage, and text-file export.
 | `lib/widgets/profile_avatar.dart` | Shared profile photo and initials fallback | Profile identity |
 | `lib/services/file_service.dart` | Creates and reads `student_info.txt` | Week 3 file export |
 
+Open the **Students** tab and tap **Add Student** to reach the Week 3
+registration form. Saved entries appear in the local student list and remain
+available when mock directory data is enabled.
+
 Generated Dart files currently present in `.dart_tool` are build/tooling
 outputs, not app source: `.dart_tool/extension_discovery/README.md` is not a
 Dart file; `.dart_tool/flutter_build/dart_plugin_registrant.dart` and
@@ -46,10 +50,12 @@ Dashboard system indicators use `connectivity_plus` to distinguish Wi-Fi from
 other network types, `geolocator` to check whether the device location service
 is enabled (without requesting or reading location), and successful
 SharedPreferences access for the app-storage status. “API Online” is shown
-only when the weather, holiday, and JSONPlaceholder endpoints all respond
-successfully in Live API mode. Settings can switch the dashboard to clearly
-identified local sample data for weather and calendar cards; device health
-checks remain live. The world clock displays Manila, Tokyo, and UTC times.
+when the weather, holiday, and JSONPlaceholder endpoints respond successfully.
+The mock-data setting switches only the Users and Faculty directories to
+sample data. The Overview and Settings profile use one separately saved local
+profile, independent of both directories. The student count uses registered
+local records; weather, calendar, and device health remain live. The world
+clock displays Manila, Tokyo, and UTC times.
 
 The faculty identity/contact values in the Faculty tab are clearly mock data,
 not official LPU directory information.
@@ -61,11 +67,11 @@ not official LPU directory information.
   shown inline; duplicate student IDs produce a SnackBar.
 - Registered records are persisted in SharedPreferences and reloaded on the
   Students page after app restart.
-- `student_info.txt` is written to the app's documents directory and includes
-  student name, ID, email, program, year level, contact, and address. Student
-  records can be exported from Settings. The app-private documents folder can
-  be inspected with Android Studio Device Explorer while the device is
-  connected.
+- `student_info.txt` is saved only in the app-private Documents directory.
+  On Android, verify it with Android Studio Device File Explorer; it is not
+  exposed in the public Downloads folder. The report includes student name,
+  ID, program, year level, email, contact, and address. Export is available
+  from Settings and the registration summary.
 - Dashboard health, quick-action, and Students programme cards use two columns
   on phone-sized screens and four columns on wider screens. Programme counts
   reflect saved student records tagged with each track code.
@@ -110,11 +116,10 @@ internal implementations separate.
 4. **Responsive design:** Adapting layout to available width makes content
    readable and controls usable on both phones and tablets, instead of
    stretching or crowding one fixed layout.
-5. **File-export challenges:** App-private files are not necessarily visible
-   in a consumer Files app. Finding the export requires knowing the app's
-   documents-directory path and using Android Studio Device Explorer or an
-   appropriate device file tool. Permissions and Android storage restrictions
-   can also affect access.
+5. **File-export challenges:** App-private files protect student information
+   from appearing in public folders, but they are not visible in the Files
+   app. Use Android Studio Device File Explorer to verify the app Documents
+   copy on an Android device.
 
 ## Required evidence to capture
 
@@ -129,7 +134,8 @@ artifacts. Capture these from the actual development environment/device:
 - Dashboard in landscape
 - App running on the physical Android device
 - Week 3 home, registration, summary, stored-data retrieval, exported
-  `student_info.txt` in Device Explorer, and phone/tablet responsive layouts
+  `student_info.txt` in app Documents through Device File Explorer, and
+  phone/tablet responsive layouts
 - API output (including `/users` and `/posts`) and the dashboard view
 
 Connected-device deployment and UI evidence should be rechecked on the

@@ -20,19 +20,20 @@ class _StudentsPageState extends State<StudentsPage> {
   int _selectedTabIndex = 0; // 0: Students, 1: Program Stats
   late Future<List<Student>> _studentsFuture;
   final TextEditingController _searchController = TextEditingController();
+  Set<String> _localStudentIds = {};
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _loadStudents();
+    _studentsFuture = _loadStudents();
   }
 
   @override
   void didUpdateWidget(covariant StudentsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.useMockData != widget.useMockData) {
-      setState(_loadStudents);
+      setState(() => _studentsFuture = _loadStudents());
     }
   }
 
@@ -42,20 +43,30 @@ class _StudentsPageState extends State<StudentsPage> {
     super.dispose();
   }
 
-  void _loadStudents() {
-    _studentsFuture = widget.useMockData
-        ? PortalDataService.fetchUsers().then(
-            (users) => users
-                .asMap()
-                .entries
-                .map((entry) => PortalDataService.toStudent(entry.value, entry.key))
-                .toList(),
-          )
-        : StorageService.getStudents();
+  Future<List<Student>> _loadStudents() async {
+    final savedStudents = await StorageService.getStudents();
+    _localStudentIds = savedStudents.map((student) => student.id).toSet();
+    if (!widget.useMockData) return savedStudents;
+
+    final users = await PortalDataService.fetchUsers();
+    final apiStudents = users
+        .asMap()
+        .entries
+        .map((entry) => PortalDataService.toStudent(entry.value, entry.key))
+        .where((student) => !_localStudentIds.contains(student.id));
+    return [...savedStudents, ...apiStudents];
+  }
+
+  Future<void> _openAddStudent() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const RegistrationPage()),
+    );
+    if (mounted) await _refresh();
   }
 
   Future<void> _refresh() async {
-    setState(_loadStudents);
+    setState(() => _studentsFuture = _loadStudents());
     await _studentsFuture;
   }
 
@@ -307,13 +318,24 @@ class _StudentsPageState extends State<StudentsPage> {
               : '${(students.fold<double>(0, (sum, student) => sum + student.attendance) / students.length * 100).round()}%',
         ),
         const SizedBox(height: 16),
-        Text(
-          'Student List',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Student List',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: _openAddStudent,
+              icon: const Icon(Icons.person_add_alt_1, size: 18),
+              label: const Text('Add Student'),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
         _buildSearchBar(),
@@ -351,7 +373,9 @@ class _StudentsPageState extends State<StudentsPage> {
           for (final student in filtered)
             StudentCard(
               student: student,
-              onTap: () => _openEditStudent(student),
+              onTap: _localStudentIds.contains(student.id)
+                  ? () => _openEditStudent(student)
+                  : null,
             ),
       ],
     );

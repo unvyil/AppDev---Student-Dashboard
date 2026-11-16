@@ -30,30 +30,33 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late Future<List<Student>> _studentsFuture;
+  late Future<Student?> _profileFuture;
   bool _exporting = false;
   bool _clearing = false;
   bool _refreshing = false;
+  bool _changingMockData = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _loadStudent();
+    _loadProfile();
   }
 
-  void _loadStudent() {
-    _studentsFuture = StorageService.getStudents();
+  void _loadProfile() {
+    _profileFuture = StorageService.getProfile();
   }
 
   Future<void> _exportStudents() async {
     setState(() => _exporting = true);
     try {
-      final file = await FileService.exportStudents();
+      await FileService.exportStudents();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('File exported successfully to:\n${file.path}'),
+          content: Text(
+            'File exported successfully to ${await FileService.getFilePath()}',
+          ),
           duration: const Duration(seconds: 4),
           backgroundColor: AppTokens.maroonPrimary,
           action: SnackBarAction(
@@ -100,7 +103,7 @@ class _SettingsPageState extends State<SettingsPage> {
       await widget.preferences.clearLocalStorage();
       await widget.onRefreshCache();
       if (!mounted) return;
-      setState(_loadStudent);
+      setState(_loadProfile);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Local storage cleared.')));
@@ -193,10 +196,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _editProfile(Student? student) async {
     await Navigator.push<void>(
       context,
-      MaterialPageRoute(builder: (_) => RegistrationPage(student: student)),
+      MaterialPageRoute(
+        builder: (_) =>
+            RegistrationPage(student: student, isProfileEditor: true),
+      ),
     );
     if (mounted) {
-      setState(_loadStudent);
+      setState(_loadProfile);
       await widget.onRefreshCache();
     }
   }
@@ -278,17 +284,38 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _changeMockData(bool enabled) async {
+    if (_changingMockData || enabled == widget.preferences.useMockData) return;
+    setState(() => _changingMockData = true);
     try {
       await widget.preferences.setUseMockData(enabled);
-      await StorageService.recordActivity(
-        enabled ? 'Mock data enabled' : 'Mock data disabled',
-        enabled ? 'Using JSONPlaceholder directory data' : 'Using saved portal data',
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(enabled ? 'Mock data enabled.' : 'Live data restored.'),
+          duration: const Duration(seconds: 2),
+        ),
       );
+      _recordMockDataActivity(enabled);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not update data mode: $error')),
       );
+    } finally {
+      if (mounted) setState(() => _changingMockData = false);
+    }
+  }
+
+  Future<void> _recordMockDataActivity(bool enabled) async {
+    try {
+      await StorageService.recordActivity(
+        enabled ? 'Mock data enabled' : 'Mock data disabled',
+        enabled
+            ? 'Using JSONPlaceholder directory data'
+            : 'Using saved portal data',
+      );
+    } catch (error) {
+      debugPrint('Could not record mock data activity: $error');
     }
   }
 
@@ -305,8 +332,8 @@ class _SettingsPageState extends State<SettingsPage> {
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            FutureBuilder<List<Student>>(
-              future: _studentsFuture,
+            FutureBuilder<Student?>(
+              future: _profileFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Card(
@@ -323,20 +350,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: Text('${snapshot.error}'),
                       trailing: IconButton(
                         tooltip: 'Retry',
-                        onPressed: () => setState(_loadStudent),
+                        onPressed: () => setState(_loadProfile),
                         icon: const Icon(Icons.refresh),
                       ),
                     ),
                   );
                 }
-                final students = snapshot.data ?? const <Student>[];
-                final student =
-                    students
-                        .where(
-                          (item) => item.name.toLowerCase().contains('novy'),
-                        )
-                        .firstOrNull ??
-                    (students.isEmpty ? null : students.first);
+                final student = snapshot.data;
                 final name = student?.name ?? 'Novy Chariz Tablac';
                 final nameParts = name
                     .trim()
@@ -373,12 +393,18 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                               Text(
                                 student?.id ?? '2023-1-00123',
-                                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
                               ),
                               Text(
                                 student?.program ?? 'BSIT-WM',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.secondary,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .secondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -387,7 +413,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 12,
                                 ),
                               ),
@@ -473,10 +501,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     secondary: const Icon(Icons.api_outlined),
                     title: const Text('Use mock data'),
                     subtitle: const Text(
-                      'Use local sample data instead of APIs',
+                      'Switch Users and Faculty directories to sample data',
                     ),
                     value: widget.preferences.useMockData,
-                    onChanged: _changeMockData,
+                    onChanged: _changingMockData ? null : _changeMockData,
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(

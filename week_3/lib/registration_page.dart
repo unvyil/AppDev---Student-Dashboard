@@ -4,9 +4,14 @@ import 'services/storage_service.dart';
 import 'summary_page.dart';
 
 class RegistrationPage extends StatefulWidget {
-  const RegistrationPage({super.key, this.student});
+  const RegistrationPage({
+    super.key,
+    this.student,
+    this.isProfileEditor = false,
+  });
 
   final Student? student;
+  final bool isProfileEditor;
 
   @override
   State<RegistrationPage> createState() => _RegistrationPageState();
@@ -15,7 +20,7 @@ class RegistrationPage extends StatefulWidget {
 class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameController = TextEditingController();
+  final _nameController = TextEditingController(text: 'Juan Dela Cruz');
   final _idController = TextEditingController();
   final _emailController = TextEditingController();
   final _contactController = TextEditingController();
@@ -93,7 +98,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
 
     try {
-      if (widget.student == null) {
+      if (widget.isProfileEditor) {
+        await StorageService.saveProfile(student);
+      } else if (widget.student == null) {
         await StorageService.saveStudent(student);
       } else {
         await StorageService.updateStudent(widget.student!.id, student);
@@ -101,7 +108,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
       if (!mounted) return;
 
-      if (widget.student != null) {
+      if (widget.isProfileEditor || widget.student != null) {
         Navigator.pop(context);
       } else {
         await Navigator.push(
@@ -125,14 +132,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   Widget _textField(
-    String label,
-    TextEditingController controller, {
-    String? hint,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-    IconData? icon,
-    bool isRequired = true,
-  }) {
+      String label,
+      TextEditingController controller, {
+        String? hint,
+        TextInputType keyboardType = TextInputType.text,
+        String? Function(String?)? validator,
+        IconData? icon,
+        bool isRequired = true,
+      }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -177,16 +184,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
             Text(
-              widget.student == null ? 'Student details' : 'Edit student details',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              widget.student == null
+                  ? 'Student details'
+                  : 'Edit student details',
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             Text(
               'Fields marked with * are required. Contact number and address are optional.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -228,13 +236,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
               validator: (value) => value == null ? 'Select a program' : null,
               decoration: InputDecoration(
                 label: _fieldLabel('Program'),
-                prefixIcon: Icon(Icons.school_outlined),
+                prefixIcon: const Icon(Icons.school_outlined),
               ),
               items: _programs
                   .map(
                     (program) =>
-                        DropdownMenuItem(value: program, child: Text(program)),
-                  )
+                    DropdownMenuItem(value: program, child: Text(program)),
+              )
                   .toList(),
               onChanged: (value) => setState(() => _program = value),
             ),
@@ -242,15 +250,16 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
             DropdownButtonFormField<String>(
               initialValue: _yearLevel,
-              validator: (value) => value == null ? 'Select a year level' : null,
+              validator: (value) =>
+              value == null ? 'Select a year level' : null,
               decoration: InputDecoration(
                 label: _fieldLabel('Year level'),
-                prefixIcon: Icon(Icons.calendar_month_outlined),
+                prefixIcon: const Icon(Icons.calendar_month_outlined),
               ),
               items: _yearLevels
                   .map(
                     (year) => DropdownMenuItem(value: year, child: Text(year)),
-                  )
+              )
                   .toList(),
               onChanged: (value) => setState(() => _yearLevel = value),
             ),
@@ -275,10 +284,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
               onPressed: _saving ? null : _saveStudent,
               icon: _saving
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
                   : const Icon(Icons.save_outlined),
               label: Text(
                 _saving

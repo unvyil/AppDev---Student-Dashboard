@@ -23,9 +23,7 @@ class ProgramStatsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CcsProgramStatsGridWidget(
-                onProgramSelected: onProgramSelected,
-              ),
+              CcsProgramStatsGridWidget(onProgramSelected: onProgramSelected),
             ],
           ),
         ),

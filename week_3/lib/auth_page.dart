@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'home_page.dart';
 import 'services/app_preferences.dart';
-import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
 
 class AuthPage extends StatefulWidget {
@@ -15,29 +13,19 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
-  final ThemeData _authTheme = AppTokens.buildTheme(Brightness.light);
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  late final TextEditingController _idController;
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _isSignup = false;
-  bool _rememberMe = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
 
   @override
-  void initState() {
-    super.initState();
-    _rememberMe = widget.preferences.rememberMe;
-    _idController = TextEditingController(text: widget.preferences.savedUserId);
-    _passwordController.text = widget.preferences.savedPassword;
-  }
-
-  @override
   void dispose() {
     _nameController.dispose();
-    _idController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -47,47 +35,62 @@ class _AuthPageState extends State<AuthPage> {
     setState(() {
       _isSignup = signup;
       _formKey.currentState?.reset();
-      // Keep credentials in their own fields when the form changes mode.
-      // Refill the login password only when returning to the login form.
-      _passwordController.text = signup
-          ? ''
-          : (_rememberMe ? widget.preferences.savedPassword : '');
+      _nameController.clear();
+      _passwordController.clear();
       _confirmController.clear();
-      if (!signup && widget.preferences.rememberMe &&
-          (_idController.text.isEmpty ||
-              _idController.text == widget.preferences.savedPassword)) {
-        _idController.text = widget.preferences.savedUserId;
-      }
     });
   }
 
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
+    if (email.isEmpty) return 'Institutional email is required.';
+    if (!RegExp(
+      r'^[^\s@]+@lpunetwork\.edu\.ph$',
+      caseSensitive: false,
+    ).hasMatch(email)) {
+      return 'Use your @lpunetwork.edu.ph email.';
+    }
+    return null;
+  }
+
+  String? _validateName(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Full name is required.';
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) return 'Password is required.';
+    if (_isSignup && value.length < 8) {
+      return 'Use at least 8 characters.';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
     setState(() => _isLoading = true);
     try {
-      if (!_isSignup) {
-        await widget.preferences.setRememberMe(
-          _rememberMe,
-          _rememberMe ? _idController.text.trim() : '',
-          _rememberMe ? _passwordController.text : '',
+      if (_isSignup) {
+        await widget.preferences.createLocalAccount(
+          name: _nameController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } else {
+        await widget.preferences.authenticateLocalAccount(
+          email: _emailController.text,
+          password: _passwordController.text,
         );
       }
-      await StorageService.recordActivity(
-        _isSignup ? 'Account created' : 'Signed in',
-        _idController.text.trim(),
-      );
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => HomePage(preferences: widget.preferences),
-        ),
-      );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not continue: $error')),
-      );
+      final message = error
+          .toString()
+          .replaceFirst('StateError: ', '')
+          .replaceFirst('FormatException: ', '');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -95,7 +98,7 @@ class _AuthPageState extends State<AuthPage> {
 
   Widget _requiredLabel(String label) => RichText(
     text: TextSpan(
-      style: _authTheme.textTheme.labelLarge,
+      style: Theme.of(context).textTheme.labelLarge,
       children: [
         TextSpan(text: label),
         const TextSpan(
@@ -106,23 +109,15 @@ class _AuthPageState extends State<AuthPage> {
     ),
   );
 
-  String? _required(String? value, String label) =>
-      value == null || value.trim().isEmpty ? '$label is required' : null;
-
   @override
-  Widget build(BuildContext context) {
-    return Theme(
-      data: _authTheme,
-      child: Builder(
-        builder: (context) {
-          final colorScheme = Theme.of(context).colorScheme;
-          return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 364),
+            child: AutofillGroup(
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -130,81 +125,86 @@ class _AuthPageState extends State<AuthPage> {
                   children: [
                     Image.asset(
                       'assets/img/lpu-logo.png',
-                      width: 64,
-                      height: 64,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      width: 60,
+                      height: 60,
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.school_outlined,
-                        size: 56,
+                        size: 54,
                         color: AppTokens.maroonPrimary,
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Text(
                       _isSignup ? 'Create your account' : 'Welcome back',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       _isSignup
-                          ? 'Sign up to access the LPU-Cavite Student Portal.'
+                          ? 'Sign up with your LPU-Cavite student email.'
                           : 'Log in to continue to your student portal.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 26),
                     if (_isSignup) ...[
                       _requiredLabel('Full name'),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
-                        validator: (value) => _required(value, 'Full name'),
+                        autofillHints: const [AutofillHints.name],
+                        textInputAction: TextInputAction.next,
+                        validator: _validateName,
                         decoration: const InputDecoration(
                           hintText: 'Enter your full name',
                           prefixIcon: Icon(Icons.person_outline),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 15),
                     ],
-                    _requiredLabel('Student ID or email'),
+                    _requiredLabel('Institutional email'),
                     const SizedBox(height: 6),
                     TextFormField(
-                      controller: _idController,
+                      controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                        enableSuggestions: false,
-                        autocorrect: false,
-                      validator: (value) => _required(value, 'Student ID or email'),
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.username],
+                      autocorrect: false,
+                      validator: _validateEmail,
                       decoration: const InputDecoration(
-                        hintText: 'e.g. 2024-2-02204',
-                        prefixIcon: Icon(Icons.badge_outlined),
+                        hintText: 'name@lpunetwork.edu.ph',
+                        prefixIcon: Icon(Icons.alternate_email),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 15),
                     _requiredLabel('Password'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      enableSuggestions: false,
+                      textInputAction: _isSignup
+                          ? TextInputAction.next
+                          : TextInputAction.done,
+                      autofillHints: [
+                        _isSignup
+                            ? AutofillHints.newPassword
+                            : AutofillHints.password,
+                      ],
                       autocorrect: false,
-                      validator: (value) {
-                        final requiredError = _required(value, 'Password');
-                        if (requiredError != null) return requiredError;
-                        if (_isSignup && value!.length < 8) {
-                          return 'Use at least 8 characters';
-                        }
-                        return null;
-                      },
+                      enableSuggestions: false,
+                      validator: _validatePassword,
                       decoration: InputDecoration(
                         hintText: 'Enter your password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                          tooltip: _obscurePassword
+                              ? 'Show password'
+                              : 'Hide password',
                           onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword,
                           ),
@@ -217,37 +217,42 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ),
                     if (_isSignup) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 15),
                       _requiredLabel('Confirm password'),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _confirmController,
                         obscureText: _obscurePassword,
+                        autofillHints: const [AutofillHints.newPassword],
+                        textInputAction: TextInputAction.done,
                         validator: (value) {
-                          final requiredError =
-                              _required(value, 'Confirm password');
-                          if (requiredError != null) return requiredError;
-                          return value == _passwordController.text
-                              ? null
-                              : 'Passwords do not match';
+                          if (value == null || value.isEmpty) {
+                            return 'Confirm password is required.';
+                          }
+                          if (value != _passwordController.text) {
+                            return 'Passwords do not match.';
+                          }
+                          return null;
                         },
                         decoration: const InputDecoration(
                           hintText: 'Re-enter your password',
                           prefixIcon: Icon(Icons.lock_outline),
                         ),
+                        onFieldSubmitted: (_) => _submit(),
                       ),
                     ] else ...[
                       const SizedBox(height: 8),
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: _rememberMe,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: const Text('Remember me'),
-                        subtitle: const Text(
-                          'Save your student ID/email and password on this device.',
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Local account sign-in',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
-                        onChanged: (value) =>
-                            setState(() => _rememberMe = value ?? false),
                       ),
                     ],
                     const SizedBox(height: 22),
@@ -266,27 +271,29 @@ class _AuthPageState extends State<AuthPage> {
                             : Text(_isSignup ? 'Sign Up' : 'Log In'),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Wrap(
                       alignment: WrapAlignment.center,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(_isSignup
-                            ? 'Already have an account? '
-                            : 'Don’t have an account? '),
+                        Text(
+                          _isSignup
+                              ? 'Already have an account? '
+                              : 'Don’t have an account? ',
+                        ),
                         TextButton(
                           onPressed: () => _switchMode(!_isSignup),
                           child: Text(_isSignup ? 'Log in' : 'Sign up'),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       '* Required field',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -295,9 +302,6 @@ class _AuthPageState extends State<AuthPage> {
           ),
         ),
       ),
-          );
-        },
-      ),
-    );
-  }
+    ),
+  );
 }

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.all_lab_tablac_8"
+    namespace = "com.example.lpu_portal_week_3"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.all_lab_tablac_8"
+        applicationId = "com.example.lpu_portal_week_3"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

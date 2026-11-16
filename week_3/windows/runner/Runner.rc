@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "all_lab_tablac_8" "\0"
+            VALUE "FileDescription", "lpu_portal_week_3" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "all_lab_tablac_8" "\0"
+            VALUE "InternalName", "lpu_portal_week_3" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "all_lab_tablac_8.exe" "\0"
-            VALUE "ProductName", "all_lab_tablac_8" "\0"
+            VALUE "OriginalFilename", "lpu_portal_week_3.exe" "\0"
+            VALUE "ProductName", "lpu_portal_week_3" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

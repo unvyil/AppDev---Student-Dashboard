@@ -32,6 +32,16 @@ class OverviewCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final nameParts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    final initials = nameParts.isEmpty
+        ? 'S'
+        : nameParts.length > 1
+        ? '${nameParts.first[0]}${nameParts.last[0]}'.toUpperCase()
+        : nameParts.first[0].toUpperCase();
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
@@ -54,7 +64,7 @@ class OverviewCardWidget extends StatelessWidget {
             children: [
               ProfileAvatar(
                 bytes: profilePhotoBytes,
-                initials: 'N',
+                initials: initials,
                 radius: 22,
                 backgroundColor: maroonColor,
               ),

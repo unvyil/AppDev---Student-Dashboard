@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:all_lab_tablac_8/main.dart';
-import 'package:all_lab_tablac_8/services/app_preferences.dart';
-import 'package:all_lab_tablac_8/services/storage_service.dart';
-import 'package:all_lab_tablac_8/widgets/ccs_program_stats_grid_widget.dart';
-import 'package:all_lab_tablac_8/widgets/faculty_card.dart';
-import 'package:all_lab_tablac_8/widgets/kpi_card.dart';
-import 'package:all_lab_tablac_8/widgets/overview_card_widget.dart';
-import 'package:all_lab_tablac_8/widgets/program_stat_card.dart';
-import 'package:all_lab_tablac_8/widgets/quick_action_button.dart';
-import 'package:all_lab_tablac_8/widgets/student_card.dart';
-import 'package:all_lab_tablac_8/widgets/student_kpi_row_widget.dart';
-import 'package:all_lab_tablac_8/widgets/swipeable_week_calendar_widget.dart';
-import 'package:all_lab_tablac_8/widgets/weather_header_card_widget.dart';
+import 'package:lpu_portal_week_3/main.dart';
+import 'package:lpu_portal_week_3/services/app_preferences.dart';
+import 'package:lpu_portal_week_3/services/storage_service.dart';
+import 'package:lpu_portal_week_3/widgets/ccs_program_stats_grid_widget.dart';
+import 'package:lpu_portal_week_3/widgets/faculty_card.dart';
+import 'package:lpu_portal_week_3/widgets/kpi_card.dart';
+import 'package:lpu_portal_week_3/widgets/overview_card_widget.dart';
+import 'package:lpu_portal_week_3/widgets/program_stat_card.dart';
+import 'package:lpu_portal_week_3/widgets/quick_action_button.dart';
+import 'package:lpu_portal_week_3/widgets/student_card.dart';
+import 'package:lpu_portal_week_3/widgets/student_kpi_row_widget.dart';
+import 'package:lpu_portal_week_3/widgets/swipeable_week_calendar_widget.dart';
+import 'package:lpu_portal_week_3/widgets/weather_header_card_widget.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -49,8 +49,7 @@ void main() {
                 ),
                 FacultyCard(
                   name: 'Dr. Jane Doe',
-                  department:
-                      'College of Information Technology and Computer Science (CCS)',
+                  department: 'College of Information Technology and Computer Science (CCS)',
                   email: '2024-2-00294@lpunetwork.edu.ph',
                   phone: '+63 234 508 2435',
                   onEmailTap: () {},
@@ -105,8 +104,9 @@ void main() {
     expect(find.text('CCS Programmes'), findsOneWidget);
   });
 
-  testWidgets('App loads Home Overview, switches tabs to Users and Faculty',
-      (tester) async {
+  testWidgets('App loads Home Overview, switches tabs to Users and Faculty', (
+    tester,
+  ) async {
     final preferences = AppPreferences();
     await preferences.load();
     await preferences.setUseMockData(true);

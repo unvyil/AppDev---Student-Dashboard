@@ -23,7 +23,10 @@ class FacultyCard extends StatelessWidget {
   String _deriveInitials() {
     if (initials != null && initials!.isNotEmpty) return initials!;
     // Strip prefixes like Dr., Prof.
-    final clean = name.replaceAll(RegExp(r'^(Dr\.|Prof\.|Mr\.|Ms\.|Mrs\.)\s*'), '');
+    final clean = name.replaceAll(
+      RegExp(r'^(Dr\.|Prof\.|Mr\.|Ms\.|Mrs\.)\s*'),
+      '',
+    );
     final parts = clean.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty) return 'F';
     return parts.first[0].toUpperCase();
@@ -41,13 +44,15 @@ class FacultyCard extends StatelessWidget {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.dividerColor),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -111,7 +116,7 @@ class FacultyCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 11,
-                            color: theme.colorScheme.onSurfaceVariant,
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -174,7 +179,9 @@ class FacultyCard extends StatelessWidget {
                     height: 32,
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? const Color(0xFFE0B0B0) : maroonColor,
+                        foregroundColor: isDark
+                            ? const Color(0xFFE0B0B0)
+                            : maroonColor,
                         side: BorderSide(
                           color: isDark ? const Color(0xFFE0B0B0) : maroonColor,
                         ),

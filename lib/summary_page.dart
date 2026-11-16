@@ -30,7 +30,8 @@ class SummaryPage extends StatelessWidget {
 
   Future<void> _export(BuildContext context) async {
     try {
-      final file = await FileService.exportStudents();
+      await FileService.exportStudents();
+      final exportLocation = await FileService.getFilePath();
 
       if (!context.mounted) return;
 
@@ -40,7 +41,7 @@ class SummaryPage extends StatelessWidget {
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 42),
           title: const Text('Export Successful'),
           content: SelectableText(
-            'Student information was exported to:\n\n${file.path}',
+            'Student information was exported to:\n\n$exportLocation',
           ),
           actions: [
             TextButton(
@@ -121,9 +122,12 @@ class SummaryPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back to Registration'),
+            onPressed: () => Navigator.popUntil(
+              context,
+              (route) => route.isFirst,
+            ),
+            icon: const Icon(Icons.home_outlined),
+            label: const Text('Back to Dashboard'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),

@@ -1,4 +1,4 @@
-package com.example.all_lab_tablac_8
+package com.example.lpu_portal_week_3
 
 import io.flutter.embedding.android.FlutterActivity
 
