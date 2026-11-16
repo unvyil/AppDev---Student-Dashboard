@@ -707,8 +707,7 @@ class _DashboardPageState extends State<DashboardPage> {
         content: Text(
           'Total registered student records: $_studentCount\n'
           'CCS Programs: 4\n'
-          'Active Students: 401\n'
-          'Average Attendance: 93%',
+          'Active Students: 401\n',
         ),
         actions: [
           TextButton(

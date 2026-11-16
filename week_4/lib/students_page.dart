@@ -361,9 +361,6 @@ class _StudentsPageState extends State<StudentsPage> {
           activeStudents: students
               .where((student) => student.status.toLowerCase() == 'active')
               .length,
-          avgAttendance: students.isEmpty
-              ? '0%'
-              : '${(students.fold<double>(0, (sum, student) => sum + student.attendance) / students.length * 100).round()}%',
         ),
         const SizedBox(height: 16),
         Row(
