@@ -218,23 +218,26 @@ class StorageService {
     );
   }
 
+  /// Returns only records explicitly created and saved by the signed-in user.
+  /// Mock/demo records are exposed separately through [getMockStudents].
   static Future<List<Student>> getStudents() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
+    if (raw == null || raw.trim().isEmpty) return <Student>[];
 
-    if (raw == null) {
-      return List<Student>.from(defaultStudents);
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      throw const FormatException('Student data must be a JSON list.');
     }
-
-    final List<dynamic> decoded = jsonDecode(raw);
-    final list = decoded
+    return decoded
+        .whereType<Map>()
         .map((item) => Student.fromJson(Map<String, dynamic>.from(item)))
         .toList();
-    if (list.isEmpty) {
-      return List<Student>.from(defaultStudents);
-    }
-    return list;
   }
+
+  static List<Student> getMockStudents() =>
+      List<Student>.unmodifiable(defaultStudents);
+
 
   static Future<Student?> getProfile() async {
     final prefs = await SharedPreferences.getInstance();

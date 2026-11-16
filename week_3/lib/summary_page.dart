@@ -126,10 +126,9 @@ class SummaryPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () =>
-                Navigator.popUntil(context, (route) => route.isFirst),
-            icon: const Icon(Icons.home_outlined),
-            label: const Text('Back to Dashboard'),
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Return to previous page'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),

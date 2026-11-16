@@ -3,10 +3,16 @@ import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 
 class StudentCard extends StatelessWidget {
-  const StudentCard({super.key, required this.student, this.onTap});
+  const StudentCard({
+    super.key,
+    required this.student,
+    this.onTap,
+    this.onDelete,
+  });
 
   final Student student;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   String _getInitials(String name) {
     final parts = name
@@ -170,6 +176,17 @@ class StudentCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (onDelete != null)
+                      IconButton(
+                        tooltip: 'Delete custom student',
+                        onPressed: onDelete,
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Color(0xFF800000),
+                          size: 20,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 10),

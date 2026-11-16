@@ -30,23 +30,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
   String? _yearLevel;
   bool _saving = false;
 
-  final List<String> _programs = [
-    'BSIT-NS',
-    'BSIT-WM',
-    'BSCS-DS',
-    'BSCS-SE',
-    'BS Information Technology',
-    'BS Computer Science',
-    'BS Business Administration',
-    'BS Hospitality Management',
-  ];
+  final List<String> _programs = ['BSIT-NS', 'BSIT-WM', 'BSCS-DS', 'BSCS-SE'];
 
   final List<String> _yearLevels = [
     '1st Year',
     '2nd Year',
     '3rd Year',
     '4th Year',
-    '5th Year',
   ];
 
   @override
@@ -111,9 +101,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
       if (widget.isProfileEditor || widget.student != null) {
         Navigator.pop(context);
       } else {
-        await Navigator.push(
+        // Replace the registration form instead of stacking the summary on
+        // top of it. Closing the summary then returns to the Students page
+        // (or the dashboard) that opened registration, allowing that page to
+        // reload the newly saved record.
+        await Navigator.pushReplacement<void, void>(
           context,
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (_) => SummaryPage(student: student, isUpdate: false),
           ),
         );
@@ -132,14 +126,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   Widget _textField(
-      String label,
-      TextEditingController controller, {
-        String? hint,
-        TextInputType keyboardType = TextInputType.text,
-        String? Function(String?)? validator,
-        IconData? icon,
-        bool isRequired = true,
-      }) {
+    String label,
+    TextEditingController controller, {
+    String? hint,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+    IconData? icon,
+    bool isRequired = true,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -241,8 +235,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
               items: _programs
                   .map(
                     (program) =>
-                    DropdownMenuItem(value: program, child: Text(program)),
-              )
+                        DropdownMenuItem(value: program, child: Text(program)),
+                  )
                   .toList(),
               onChanged: (value) => setState(() => _program = value),
             ),
@@ -251,7 +245,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             DropdownButtonFormField<String>(
               initialValue: _yearLevel,
               validator: (value) =>
-              value == null ? 'Select a year level' : null,
+                  value == null ? 'Select a year level' : null,
               decoration: InputDecoration(
                 label: _fieldLabel('Year level'),
                 prefixIcon: const Icon(Icons.calendar_month_outlined),
@@ -259,7 +253,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
               items: _yearLevels
                   .map(
                     (year) => DropdownMenuItem(value: year, child: Text(year)),
-              )
+                  )
                   .toList(),
               onChanged: (value) => setState(() => _yearLevel = value),
             ),
@@ -284,10 +278,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
               onPressed: _saving ? null : _saveStudent,
               icon: _saving
                   ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.save_outlined),
               label: Text(
                 _saving

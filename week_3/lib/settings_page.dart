@@ -77,18 +77,20 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _logOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Log out?'),
-        content: const Text(
-          'Your local account will remain saved on this device.',
-        ),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are you sure you want to log out?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF800000),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Log Out'),
           ),
         ],
@@ -554,15 +556,28 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Log Out'),
-                subtitle: Text(
-                  widget.preferences.activeUserEmail ?? 'End this session',
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _logOut,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text(
+                  'Log Out',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
-                onTap: _logOut,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF800000),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ),
           ],

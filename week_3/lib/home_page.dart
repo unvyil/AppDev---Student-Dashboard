@@ -51,7 +51,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onPreferencesChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    _dashboardKey.currentState?._reloadDashboard();
   }
 
   Future<void> _refreshDashboard() async {
@@ -339,8 +341,30 @@ class _DashboardContentState extends State<DashboardContent> {
     super.dispose();
   }
 
+  Future<List<Student>> _loadDashboardStudents() async {
+    final custom = await StorageService.getStudents();
+    if (!widget.preferences.useMockData) return custom;
+    final merged = <String, Student>{
+      for (final student in StorageService.getMockStudents())
+        student.id: student,
+    };
+    try {
+      final users = await PortalDataService.fetchUsers();
+      for (var index = 0; index < users.length; index++) {
+        final student = PortalDataService.toStudent(users[index], index);
+        merged.putIfAbsent(student.id, () => student);
+      }
+    } catch (_) {
+      // Keep bundled mock data available when the API is unreachable.
+    }
+    for (final student in custom) {
+      merged[student.id] = student;
+    }
+    return merged.values.toList();
+  }
+
   void _reloadDashboard() {
-    _studentsFuture = StorageService.getStudents();
+    _studentsFuture = _loadDashboardStudents();
     _profileStudentFuture = StorageService.getProfile();
     _activityFuture = StorageService.getRecentActivity();
     _weatherFuture = _fetchWeather();

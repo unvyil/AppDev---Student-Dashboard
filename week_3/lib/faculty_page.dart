@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/portal_data_service.dart';
 import 'widgets/faculty_card.dart';
@@ -9,6 +12,7 @@ class FacultyMember {
   final String email;
   final String phone;
   final String initials;
+  final bool isCustom;
 
   const FacultyMember({
     required this.name,
@@ -16,6 +20,7 @@ class FacultyMember {
     required this.email,
     required this.phone,
     this.initials = 'J',
+    this.isCustom = false,
   });
 }
 
@@ -100,26 +105,219 @@ class _FacultyPageState extends State<FacultyPage> {
     }
   }
 
-  Future<List<FacultyMember>> _loadFaculty() async {
-    if (!widget.useMockData) return _defaultFaculty;
-    final users = await PortalDataService.fetchUsers();
-    return users.map((user) {
+  static const String _customFacultyKey = 'lpu_custom_faculty';
+
+  Future<List<FacultyMember>> _getCustomFaculty() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_customFacultyKey);
+    if (raw == null || raw.isEmpty) return <FacultyMember>[];
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      throw const FormatException('Faculty data must be a JSON list.');
+    }
+    return decoded.whereType<Map>().map((item) {
+      final data = Map<String, dynamic>.from(item);
+      final name = data['name'] as String? ?? '';
       return FacultyMember(
-        name: user['name'] as String? ?? 'Faculty member',
-        department: user['company'] is Map
-            ? (user['company'] as Map)['name'] as String? ?? 'Academic Affairs'
-            : 'Academic Affairs',
-        email: user['email'] as String? ?? '',
-        phone: user['phone'] as String? ?? '',
-        initials: (user['name'] as String? ?? 'F')
-            .trim()
-            .split(RegExp(r'\s+'))
-            .where((part) => part.isNotEmpty)
-            .take(2)
-            .map((part) => part[0].toUpperCase())
-            .join(),
+        name: name,
+        department: data['department'] as String? ?? '',
+        email: data['email'] as String? ?? '',
+        phone: data['phone'] as String? ?? '',
+        initials: name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty)
+            .take(2).map((part) => part[0].toUpperCase()).join(),
+        isCustom: true,
       );
     }).toList();
+  }
+
+  Future<void> _saveCustomFaculty(List<FacultyMember> faculty) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _customFacultyKey,
+      jsonEncode(faculty.map((member) => {
+        'name': member.name,
+        'department': member.department,
+        'email': member.email,
+        'phone': member.phone,
+      }).toList()),
+    );
+  }
+
+  Future<void> _showFacultyForm({FacultyMember? existing}) async {
+    final name = TextEditingController(text: existing?.name ?? '');
+    final department = TextEditingController(text: existing?.department ?? '');
+    final email = TextEditingController(text: existing?.email ?? '');
+    final phone = TextEditingController(text: existing?.phone ?? '');
+    final formKey = GlobalKey<FormState>();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(existing == null ? 'Add Faculty' : 'Edit Faculty'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final entry in <(String, TextEditingController)>[
+                  ('Full name', name),
+                  ('Department', department),
+                  ('Email', email),
+                  ('Phone', phone),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: TextFormField(
+                      controller: entry.$2,
+                      decoration: InputDecoration(
+                        labelText: entry.$1,
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (value) => (value == null || value.trim().isEmpty)
+                          ? 'This field is required'
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogContext, true);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (saved == true) {
+      final custom = await _getCustomFaculty();
+      final updated = FacultyMember(
+        name: name.text.trim(),
+        department: department.text.trim(),
+        email: email.text.trim(),
+        phone: phone.text.trim(),
+        initials: name.text.trim().split(RegExp(r'\s+'))
+            .where((part) => part.isNotEmpty).take(2)
+            .map((part) => part[0].toUpperCase()).join(),
+        isCustom: true,
+      );
+      if (existing == null) {
+        if (custom.any((item) => item.email.toLowerCase() == updated.email.toLowerCase())) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('A faculty member with this email already exists.')),
+            );
+          }
+        } else {
+          custom.add(updated);
+          await _saveCustomFaculty(custom);
+        }
+      } else {
+        final index = custom.indexWhere((item) => item.email == existing.email);
+        if (index >= 0) {
+          custom[index] = updated;
+          await _saveCustomFaculty(custom);
+        }
+      }
+      if (mounted) setState(() => _facultyFuture = _loadFaculty());
+    }
+    name.dispose();
+    department.dispose();
+    email.dispose();
+    phone.dispose();
+  }
+
+  Future<void> _showFacultyActions(FacultyMember faculty) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit faculty'),
+              onTap: () => Navigator.pop(sheetContext, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Color(0xFF800000)),
+              title: const Text('Delete faculty'),
+              onTap: () => Navigator.pop(sheetContext, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == 'edit') {
+      await _showFacultyForm(existing: faculty);
+    } else if (action == 'delete') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Delete faculty?'),
+          content: Text('Remove ${faculty.name} from saved faculty records?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) {
+        final custom = await _getCustomFaculty();
+        custom.removeWhere((item) => item.email == faculty.email);
+        await _saveCustomFaculty(custom);
+        if (mounted) setState(() => _facultyFuture = _loadFaculty());
+      }
+    }
+  }
+
+  Future<List<FacultyMember>> _loadFaculty() async {
+    final custom = await _getCustomFaculty();
+    if (!widget.useMockData) return custom;
+
+    final byEmail = <String, FacultyMember>{};
+    for (final member in _defaultFaculty) {
+      byEmail.putIfAbsent(member.email.toLowerCase(), () => member);
+    }
+    try {
+      final users = await PortalDataService.fetchUsers();
+      for (final user in users) {
+        final name = user['name'] as String? ?? 'Faculty member';
+        final member = FacultyMember(
+          name: name,
+          department: user['company'] is Map
+              ? (user['company'] as Map)['name'] as String? ?? 'Academic Affairs'
+              : 'Academic Affairs',
+          email: user['email'] as String? ?? '',
+          phone: user['phone'] as String? ?? '',
+          initials: name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty)
+              .take(2).map((part) => part[0].toUpperCase()).join(),
+        );
+        byEmail.putIfAbsent(member.email.toLowerCase(), () => member);
+      }
+    } catch (_) {
+      // Retain bundled faculty records if the remote service is unavailable.
+    }
+    for (final member in custom) {
+      byEmail[member.email.toLowerCase()] = member;
+    }
+    return byEmail.values.toList();
   }
 
   @override
@@ -266,6 +464,16 @@ class _FacultyPageState extends State<FacultyPage> {
                         tooltip: 'Filter',
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 44,
+                      width: 44,
+                      child: IconButton(
+                        tooltip: 'Add faculty',
+                        onPressed: () => _showFacultyForm(),
+                        icon: const Icon(Icons.person_add_alt_1, color: Color(0xFF800000)),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -309,6 +517,7 @@ class _FacultyPageState extends State<FacultyPage> {
                       email: faculty.email,
                       phone: faculty.phone,
                       initials: faculty.initials,
+                      onManageTap: faculty.isCustom ? () => _showFacultyActions(faculty) : null,
                       onEmailTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(

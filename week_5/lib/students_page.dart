@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'registration_page.dart';
 import 'services/storage_service.dart';
+import 'services/portal_data_service.dart';
 import 'widgets/ccs_program_stats_grid_widget.dart';
 import 'widgets/student_card.dart';
 import 'widgets/student_kpi_row_widget.dart';
@@ -42,7 +43,29 @@ class _StudentsPageState extends State<StudentsPage> {
     super.dispose();
   }
 
-  Future<List<Student>> _loadStudents() => StorageService.getStudents();
+  Future<List<Student>> _loadStudents() async {
+    final custom = await StorageService.getStudents();
+    if (!widget.useMockData) return custom;
+
+    final merged = <String, Student>{};
+    for (final student in StorageService.getMockStudents()) {
+      merged[student.id] = student;
+    }
+    try {
+      final users = await PortalDataService.fetchUsers();
+      for (var index = 0; index < users.length; index++) {
+        final student = PortalDataService.toStudent(users[index], index);
+        merged.putIfAbsent(student.id, () => student);
+      }
+    } catch (_) {
+      // Bundled defaults remain available if the remote source fails.
+    }
+    // User-created records win if their ID overlaps a demo record.
+    for (final student in custom) {
+      merged[student.id] = student;
+    }
+    return merged.values.toList();
+  }
 
   Future<void> _openAddStudent() async {
     await Navigator.push<void>(
@@ -57,12 +80,20 @@ class _StudentsPageState extends State<StudentsPage> {
     await _studentsFuture;
   }
 
-  void _openEditStudent(Student student) async {
+  Future<void> _openEditStudent(Student student) async {
+    final custom = await StorageService.getStudents();
+    if (!mounted) return;
+    if (!custom.any((item) => item.id == student.id)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Demo records cannot be edited.')),
+      );
+      return;
+    }
     await Navigator.push<void>(
       context,
       MaterialPageRoute(builder: (_) => RegistrationPage(student: student)),
     );
-    _refresh();
+    if (mounted) await _refresh();
   }
 
   Future<void> _deleteStudent(Student student) async {
@@ -84,6 +115,15 @@ class _StudentsPageState extends State<StudentsPage> {
       ),
     );
     if (confirmed != true) return;
+    final custom = await StorageService.getStudents();
+    if (!custom.any((item) => item.id == student.id)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Demo records cannot be deleted.')),
+        );
+      }
+      return;
+    }
     await StorageService.deleteStudent(student.id);
     if (!mounted) return;
     await _refresh();

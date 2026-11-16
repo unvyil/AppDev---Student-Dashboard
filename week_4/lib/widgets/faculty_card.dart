@@ -10,6 +10,7 @@ class FacultyCard extends StatelessWidget {
     this.initials,
     this.onEmailTap,
     this.onCallTap,
+    this.onManageTap,
   });
 
   final String name;
@@ -19,6 +20,7 @@ class FacultyCard extends StatelessWidget {
   final String? initials;
   final VoidCallback? onEmailTap;
   final VoidCallback? onCallTap;
+  final VoidCallback? onManageTap;
 
   String _deriveInitials() {
     if (initials != null && initials!.isNotEmpty) return initials!;
@@ -143,6 +145,13 @@ class FacultyCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onManageTap != null)
+                  IconButton(
+                    tooltip: 'Manage custom faculty',
+                    onPressed: onManageTap,
+                    icon: const Icon(Icons.more_vert),
+                    visualDensity: VisualDensity.compact,
+                  ),
               ],
             ),
             const SizedBox(height: 12),

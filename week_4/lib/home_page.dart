@@ -50,7 +50,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onPreferencesChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+
+    // Changing a preference (such as Use mock data) must refresh the page
+    // contents without changing the tab the user is currently viewing.
+    final activeTab = _selectedIndex;
+    setState(() {
+      _selectedIndex = (activeTab >= 0 && activeTab < 4) ? activeTab : 0;
+    });
+
+    // Reload dashboard data after the navigation stack has rebuilt. Keeping
+    // this separate avoids a dashboard refresh interfering with the active tab.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _dashboardKey.currentState?._reloadDashboard();
+    });
   }
 
   Future<void> _refreshDashboard() async {
@@ -339,8 +353,30 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
+  Future<List<Student>> _loadDashboardStudents() async {
+    final custom = await StorageService.getStudents();
+    if (!widget.preferences.useMockData) return custom;
+    final merged = <String, Student>{
+      for (final student in StorageService.getMockStudents())
+        student.id: student,
+    };
+    try {
+      final users = await PortalDataService.fetchUsers();
+      for (var index = 0; index < users.length; index++) {
+        final student = PortalDataService.toStudent(users[index], index);
+        merged.putIfAbsent(student.id, () => student);
+      }
+    } catch (_) {
+      // Keep bundled mock data available when the API is unreachable.
+    }
+    for (final student in custom) {
+      merged[student.id] = student;
+    }
+    return merged.values.toList();
+  }
+
   void _reloadDashboard() {
-    _studentsFuture = StorageService.getStudents();
+    _studentsFuture = _loadDashboardStudents();
     _profileStudentFuture = StorageService.getProfile();
     _activityFuture = StorageService.getRecentActivity();
     _weatherFuture = _fetchWeather();
